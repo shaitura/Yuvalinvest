@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="he">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🚀 מסע ההשקעות שלי</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container { max-width: 920px; margin: 0 auto; }
+
+    .header { text-align: center; color: white; margin-bottom: 28px; }
+    .header h1 { font-size: 2.4rem; text-shadow: 2px 2px 6px rgba(0,0,0,0.3); }
+    .header p  { font-size: 1rem; opacity: 0.85; margin-top: 6px; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+    .stat-card {
+      background: white;
+      border-radius: 18px;
+      padding: 18px 16px;
+      text-align: center;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.12);
+      transition: transform .2s;
+    }
+    .stat-card:hover { transform: translateY(-4px); }
+    .stat-card .icon  { font-size: 1.9rem; margin-bottom: 6px; }
+    .stat-card .label { color: #777; font-size: 0.8rem; margin-bottom: 4px; }
+    .stat-card .value { font-size: 1.5rem; font-weight: 700; color: #222; }
+    .stat-card .value.positive { color: #16a34a; }
+    .stat-card .value.negative { color: #dc2626; }
+
+    .price-bar {
+      background: white;
+      border-radius: 18px;
+      padding: 14px 22px;
+      margin-bottom: 22px;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.12);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .price-bar .label { color: #555; font-size: 0.9rem; }
+    .price-bar .price-right { display: flex; align-items: center; gap: 10px; }
+    #sp500Display { font-size: 1.3rem; font-weight: 700; color: #222; }
+    #sp500Change { font-size: 0.85rem; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+    #sp500Change.positive { background: #dcfce7; color: #15803d; }
+    #sp500Change.negative { background: #fee2e2; color: #b91c1c; }
+
+    .refresh-btn {
+      background: none; border: none; cursor: pointer;
+      font-size: 1.1rem; opacity: 0.65;
+      transition: opacity .2s, transform .4s;
+    }
+    .refresh-btn:hover { opacity: 1; }
+    .refresh-btn.spinning { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .alert {
+      padding: 12px 18px; border-radius: 14px;
+      margin-bottom: 16px; font-size: 0.88rem; line-height: 1.5;
+    }
+    .alert a { color: inherit; font-weight: 600; }
+    .alert-warning { background: #fff7ed; border: 1px solid #fdba74; color: #9a3412; }
+
+    .card {
+      background: white;
+      border-radius: 18px;
+      padding: 24px;
+      margin-bottom: 22px;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.12);
+    }
+    .card h2 { margin-bottom: 18px; color: #333; font-size: 1.15rem; }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group label { font-size: 0.82rem; color: #555; font-weight: 600; }
+    .form-group input {
+      padding: 10px 14px;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      font-size: 1rem;
+      transition: border-color .2s;
+      text-align: right;
+      font-family: inherit;
+    }
+    .form-group input:focus { outline: none; border-color: #764ba2; }
+    .form-group.hidden { display: none; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white; border: none;
+      padding: 12px 28px;
+      border-radius: 12px;
+      font-size: 1rem;
+      cursor: pointer;
+      width: 100%;
+      transition: transform .2s, box-shadow .2s;
+      font-family: inherit;
+    }
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 18px rgba(102,126,234,0.45);
+    }
+    .btn-primary:disabled { opacity: 0.6; cursor: default; }
+
+    .investment-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 16px;
+      border-radius: 14px;
+      margin-bottom: 10px;
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      transition: background .2s;
+      gap: 10px;
+    }
+    .investment-item:hover { background: #f1f5f9; }
+    .investment-item .left-side { display: flex; align-items: center; gap: 10px; }
+    .investment-item .info { display: flex; flex-direction: column; gap: 3px; }
+    .investment-item .inv-date { font-size: 0.78rem; color: #888; }
+    .investment-item .inv-amount { font-size: 0.98rem; font-weight: 700; color: #222; }
+    .investment-item .inv-sp500 { font-size: 0.76rem; color: #aaa; }
+    .investment-item .right-side { text-align: left; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+    .investment-item .current-val { font-size: 1rem; font-weight: 700; color: #222; }
+    .return-badge {
+      font-size: 0.78rem; padding: 2px 9px;
+      border-radius: 20px; font-weight: 600;
+    }
+    .return-badge.positive { background: #dcfce7; color: #15803d; }
+    .return-badge.negative { background: #fee2e2; color: #b91c1c; }
+    .return-badge.neutral  { background: #f3f4f6; color: #6b7280; }
+
+    .delete-btn {
+      background: none; border: none; cursor: pointer;
+      color: #d1d5db; font-size: 1.15rem; padding: 4px;
+      transition: color .2s; flex-shrink: 0;
+    }
+    .delete-btn:hover { color: #ef4444; }
+
+    .empty-state { text-align: center; padding: 36px; color: #aaa; }
+    .empty-state .big-icon { font-size: 3rem; margin-bottom: 10px; }
+
+    .footer {
+      text-align: center;
+      color: rgba(255,255,255,0.65);
+      font-size: 0.78rem;
+      margin-top: 4px;
+    }
+
+    .confetti {
+      position: fixed;
+      border-radius: 50%;
+      pointer-events: none;
+      animation: confettiFall 3s ease-in forwards;
+    }
+    @keyframes confettiFall {
+      0%   { transform: translateY(-80px) rotate(0deg);   opacity: 1; }
+      100% { transform: translateY(105vh) rotate(720deg); opacity: 0; }
+    }
+
+    @media (max-width: 560px) {
+      .header h1 { font-size: 1.75rem; }
+      .stat-card .value { font-size: 1.25rem; }
+      #sp500Display { font-size: 1.1rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <h1>🚀 מסע ההשקעות שלי</h1>
+    <p>עוקבת אחרי ההשקעות הדמיוניות שלך במדד S&amp;P 500</p>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="icon">💰</div>
+      <div class="label">סך הכסף שהושקע</div>
+      <div class="value" id="statInvested">₪0</div>
+    </div>
+    <div class="stat-card">
+      <div class="icon">📈</div>
+      <div class="label">שווי נוכחי</div>
+      <div class="value" id="statCurrent">₪0</div>
+    </div>
+    <div class="stat-card">
+      <div class="icon">✨</div>
+      <div class="label">רווח / הפסד</div>
+      <div class="value" id="statProfit">₪0</div>
+    </div>
+    <div class="stat-card">
+      <div class="icon">📊</div>
+      <div class="label">תשואה כוללת</div>
+      <div class="value" id="statReturn">0%</div>
+    </div>
+  </div>
+
+  <div class="price-bar">
+    <span class="label">מדד S&amp;P 500 כעת:</span>
+    <div class="price-right">
+      <span id="sp500Display">טוען...</span>
+      <span id="sp500Change" style="display:none"></span>
+      <button class="refresh-btn" id="refreshBtn" onclick="refreshPrice()" title="רענן מחיר">🔄</button>
+    </div>
+  </div>
+
+  <div id="apiAlert" class="alert alert-warning" style="display:none">
+    ⚠️ לא ניתן לטעון את מחיר המדד אוטומטית. הכניסי את מחיר S&amp;P 500 ידנית לפי
+    <a href="https://finance.yahoo.com/quote/%5EGSPC/" target="_blank" rel="noopener">Yahoo Finance</a>.
+  </div>
+
+  <div class="card" id="chartSection" style="display:none">
+    <h2>📈 גרף הצמיחה שלי</h2>
+    <canvas id="growthChart" height="200"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>➕ הוסיפי השקעה חדשה</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label>📅 תאריך</label>
+        <input type="date" id="fDate" />
+      </div>
+      <div class="form-group">
+        <label>💵 סכום (₪)</label>
+        <input type="number" id="fAmount" placeholder="50 – 500" min="1" max="10000" />
+      </div>
+      <div class="form-group hidden" id="manualGroup">
+        <label>📊 מחיר S&amp;P 500</label>
+        <input type="number" id="fManual" placeholder="לדוגמה: 5200" step="0.01" min="1" />
+      </div>
+    </div>
+    <button class="btn-primary" id="addBtn" onclick="addInvestment()">✨ הוסיפי השקעה!</button>
+  </div>
+
+  <div class="card">
+    <h2>📋 כל ההשקעות שלי</h2>
+    <div id="investmentsList">
+      <div class="empty-state">
+        <div class="big-icon">🌱</div>
+        <p>עדיין אין השקעות.<br>הוסיפי את ההשקעה הראשונה שלך!</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer" id="lastUpdated"></div>
+</div>
+
+<script>
+let investments  = JSON.parse(localStorage.getItem('sp500_investments') || '[]');
+let currentPrice = null;
+let apiFailed    = false;
+let growthChart  = null;
+
+const fmt = n => '₪' + Number(n).toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtNum = n => Number(n).toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function fmtDate(str) {
+  return new Date(str + 'T12:00:00').toLocaleDateString('he-IL', {
+    year: 'numeric', month: 'long', day: 'numeric'
+  });
+}
+
+function today() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function save() {
+  localStorage.setItem('sp500_investments', JSON.stringify(investments));
+}
+
+async function fetchCurrentPrice() {
+  const SYMBOL  = '%5EGSPC';
+  const PROXY   = 'https://corsproxy.io/?';
+  const YAHOO_Q = `https://query1.finance.yahoo.com/v8/finance/chart/${SYMBOL}?range=1d&interval=1d`;
+
+  const attempts = [
+    () => fetch(YAHOO_Q),
+    () => fetch(PROXY + encodeURIComponent(YAHOO_Q)),
+  ];
+
+  for (const attempt of attempts) {
+    try {
+      const r = await attempt();
+      if (!r.ok) continue;
+      const d = await r.json();
+      const meta = d?.chart?.result?.[0]?.meta;
+      if (meta?.regularMarketPrice) {
+        return {
+          price:         meta.regularMarketPrice,
+          previousClose: meta.chartPreviousClose || meta.previousClose || null,
+        };
+      }
+    } catch (_) {}
+  }
+  return null;
+}
+
+async function fetchHistoricalPrice(dateStr) {
+  const PROXY  = 'https://corsproxy.io/?';
+  const SYMBOL = '%5EGSPC';
+  const d      = new Date(dateStr + 'T12:00:00');
+  const p1     = Math.floor(d.getTime() / 1000) - 86400;
+  const p2     = Math.floor(d.getTime() / 1000) + 86400 * 4;
+  const YAHOO_H = `https://query1.finance.yahoo.com/v8/finance/chart/${SYMBOL}?period1=${p1}&period2=${p2}&interval=1d`;
+
+  const attempts = [
+    () => fetch(YAHOO_H),
+    () => fetch(PROXY + encodeURIComponent(YAHOO_H)),
+  ];
+
+  for (const attempt of attempts) {
+    try {
+      const r = await attempt();
+      if (!r.ok) continue;
+      const data = await r.json();
+      const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
+      if (closes?.length) {
+        const valid = closes.find(p => p !== null && p > 0);
+        if (valid) return valid;
+      }
+    } catch (_) {}
+  }
+  return null;
+}
+
+async function initPrice() {
+  spinning(true);
+  const result = await fetchCurrentPrice();
+  spinning(false);
+
+  if (result) {
+    currentPrice = result.price;
+    apiFailed    = false;
+    showPrice(result.price, result.previousClose);
+    document.getElementById('apiAlert').style.display = 'none';
+    document.getElementById('manualGroup').classList.add('hidden');
+  } else {
+    apiFailed = true;
+    document.getElementById('sp500Display').textContent = 'לא זמין';
+    document.getElementById('apiAlert').style.display   = 'block';
+    document.getElementById('manualGroup').classList.remove('hidden');
+  }
+  updateUI();
+}
+
+async function refreshPrice() {
+  spinning(true);
+  const result = await fetchCurrentPrice();
+  spinning(false);
+
+  if (result) {
+    currentPrice = result.price;
+    apiFailed    = false;
+    showPrice(result.price, result.previousClose);
+    document.getElementById('apiAlert').style.display = 'none';
+    document.getElementById('manualGroup').classList.add('hidden');
+    updateUI();
+  }
+}
+
+function showPrice(price, prevClose) {
+  document.getElementById('sp500Display').textContent = fmtNum(price) + ' $';
+  document.getElementById('lastUpdated').textContent  =
+    'עודכן: ' + new Date().toLocaleTimeString('he-IL');
+
+  const changeEl = document.getElementById('sp500Change');
+  if (prevClose && prevClose > 0) {
+    const chg    = price - prevClose;
+    const chgPct = (chg / prevClose) * 100;
+    const sign   = chg >= 0 ? '+' : '';
+    changeEl.textContent   = `${sign}${fmtNum(chg)} (${sign}${chgPct.toFixed(2)}%)`;
+    changeEl.className     = 'return-badge ' + (chg >= 0 ? 'positive' : 'negative');
+    changeEl.style.display = 'inline';
+  }
+}
+
+function spinning(on) {
+  document.getElementById('refreshBtn').classList.toggle('spinning', on);
+}
+
+async function addInvestment() {
+  const dateVal   = document.getElementById('fDate').value;
+  const amountVal = parseFloat(document.getElementById('fAmount').value);
+  const manualVal = parseFloat(document.getElementById('fManual').value);
+
+  if (!dateVal) { alert('אנא בחרי תאריך'); return; }
+  if (!amountVal || amountVal <= 0) { alert('אנא הכניסי סכום חיובי'); return; }
+  if (dateVal > today()) { alert('לא ניתן להשקיע בתאריך עתידי'); return; }
+
+  let sp500 = null;
+  const isToday = dateVal === today();
+
+  setAdding(true);
+
+  if (isToday && currentPrice) {
+    sp500 = currentPrice;
+  } else if (isToday) {
+    const r = await fetchCurrentPrice();
+    if (r) { currentPrice = r.price; sp500 = r.price; showPrice(r.price, r.previousClose); }
+  } else {
+    sp500 = await fetchHistoricalPrice(dateVal);
+  }
+
+  setAdding(false);
+
+  if (!sp500) {
+    if (manualVal > 0) {
+      sp500 = manualVal;
+    } else {
+      apiFailed = true;
+      document.getElementById('apiAlert').style.display = 'block';
+      document.getElementById('manualGroup').classList.remove('hidden');
+      alert('לא ניתן לקבל את מחיר המדד אוטומטית. אנא הכניסי ידנית.');
+      return;
+    }
+  }
+
+  investments.push({
+    id:         Date.now().toString(),
+    date:       dateVal,
+    amountNIS:  amountVal,
+    sp500Price: sp500,
+  });
+
+  save();
+  document.getElementById('fAmount').value = '';
+  document.getElementById('fManual').value = '';
+  celebrate();
+  updateUI();
+}
+
+function setAdding(on) {
+  const btn = document.getElementById('addBtn');
+  btn.disabled    = on;
+  btn.textContent = on ? '⏳ מביאה מחיר...' : '✨ הוסיפי השקעה!';
+}
+
+function deleteInvestment(id) {
+  if (!confirm('למחוק השקעה זו?')) return;
+  investments = investments.filter(inv => inv.id !== id);
+  save();
+  updateUI();
+}
+
+function calcCurrent(inv) {
+  if (!currentPrice) return null;
+  return inv.amountNIS * (currentPrice / inv.sp500Price);
+}
+
+function updateUI() {
+  const totalInvested = investments.reduce((s, inv) => s + inv.amountNIS, 0);
+
+  let totalCurrent = 0;
+  investments.forEach(inv => {
+    const v = calcCurrent(inv);
+    if (v !== null) totalCurrent += v;
+  });
+
+  document.getElementById('statInvested').textContent = fmt(totalInvested);
+
+  if (currentPrice && investments.length > 0) {
+    const profit = totalCurrent - totalInvested;
+    const pct    = totalInvested > 0 ? (profit / totalInvested) * 100 : 0;
+    const sign   = profit >= 0 ? '+' : '';
+    const cls    = profit >= 0 ? 'positive' : 'negative';
+
+    setVal('statCurrent', fmt(totalCurrent));
+    setVal('statProfit',  sign + fmt(profit), cls);
+    setVal('statReturn',  sign + pct.toFixed(2) + '%', cls);
+  } else {
+    ['statCurrent','statProfit','statReturn'].forEach(id => setVal(id, '₪0'));
+  }
+
+  renderList();
+  renderChart();
+}
+
+function setVal(id, text, cls = '') {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className   = 'value' + (cls ? ' ' + cls : '');
+}
+
+function renderList() {
+  const el = document.getElementById('investmentsList');
+  if (!investments.length) {
+    el.innerHTML = `
+      <div class="empty-state">
+        <div class="big-icon">🌱</div>
+        <p>עדיין אין השקעות.<br>הוסיפי את ההשקעה הראשונה שלך!</p>
+      </div>`;
+    return;
+  }
+
+  const sorted = [...investments].sort((a, b) => b.date.localeCompare(a.date));
+
+  el.innerHTML = sorted.map(inv => {
+    const cur  = calcCurrent(inv);
+    const prf  = cur !== null ? cur - inv.amountNIS : null;
+    const pct  = prf !== null ? (prf / inv.amountNIS) * 100 : null;
+    const sign = pct !== null && pct >= 0 ? '+' : '';
+    const cls  = pct === null ? 'neutral' : pct >= 0 ? 'positive' : 'negative';
+
+    return `
+      <div class="investment-item">
+        <div class="left-side">
+          <button class="delete-btn" onclick="deleteInvestment('${inv.id}')" title="מחק">🗑️</button>
+          <div class="info">
+            <div class="inv-date">📅 ${fmtDate(inv.date)}</div>
+            <div class="inv-amount">הושקע: ${fmt(inv.amountNIS)}</div>
+            <div class="inv-sp500">מדד בקנייה: $${fmtNum(inv.sp500Price)}</div>
+          </div>
+        </div>
+        <div class="right-side">
+          <div class="current-val">${cur !== null ? fmt(cur) : '—'}</div>
+          <span class="return-badge ${cls}">
+            ${pct !== null ? sign + Math.abs(pct).toFixed(2) + '%' : 'N/A'}
+          </span>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderChart() {
+  const section = document.getElementById('chartSection');
+  if (!investments.length || !currentPrice) {
+    section.style.display = 'none';
+    if (growthChart) { growthChart.destroy(); growthChart = null; }
+    return;
+  }
+  section.style.display = 'block';
+
+  const sorted = [...investments].sort((a, b) => a.date.localeCompare(b.date));
+  const labels = sorted.map(inv => fmtDate(inv.date));
+  let cumInv = 0, cumCur = 0;
+  const dataInv = [], dataCur = [];
+
+  sorted.forEach(inv => {
+    cumInv += inv.amountNIS;
+    const cur = calcCurrent(inv);
+    cumCur += cur !== null ? cur : inv.amountNIS;
+    dataInv.push(cumInv);
+    dataCur.push(cumCur);
+  });
+
+  const ctx = document.getElementById('growthChart').getContext('2d');
+  if (growthChart) growthChart.destroy();
+
+  growthChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'סכום שהושקע',
+          data: dataInv,
+          borderColor: '#94a3b8',
+          backgroundColor: 'rgba(148,163,184,0.1)',
+          borderDash: [6,4],
+          fill: true,
+          tension: 0.35,
+          pointRadius: 5,
+        },
+        {
+          label: 'שווי נוכחי',
+          data: dataCur,
+          borderColor: '#764ba2',
+          backgroundColor: 'rgba(118,75,162,0.13)',
+          fill: true,
+          tension: 0.35,
+          pointRadius: 5,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } },
+      },
+      scales: {
+        y: { ticks: { callback: v => '₪' + v.toLocaleString('he-IL') } },
+      },
+    },
+  });
+}
+
+function celebrate() {
+  const colors = ['#667eea','#764ba2','#f59e0b','#10b981','#ef4444','#ec4899','#06b6d4'];
+  for (let i = 0; i < 35; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'confetti';
+      const size = (Math.random() * 10 + 6) + 'px';
+      Object.assign(el.style, {
+        left:              Math.random() * 100 + 'vw',
+        top:               '-20px',
+        width:             size,
+        height:            size,
+        background:        colors[Math.floor(Math.random() * colors.length)],
+        animationDuration: (Math.random() * 2 + 2) + 's',
+        borderRadius:      Math.random() > 0.5 ? '50%' : '2px',
+      });
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 5000);
+    }, i * 60);
+  }
+}
+
+document.getElementById('fDate').value = today();
+initPrice();
+</script>
+</body>
+</html>
