@@ -442,6 +442,87 @@
     .badge-neu { background: #f3f4f6; color: #6b7280; }
     .inv-actions { display: flex; gap: 2px; }
 
+    /* ===== INLINE EDIT ===== */
+    .inv-item.editing {
+      background: #f3e8ff;
+      border-color: var(--primary-light);
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+    }
+    .inv-edit-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .inv-edit-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--primary);
+      flex: 1;
+    }
+    .inv-edit-fields {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .inv-edit-row {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .inv-edit-row label {
+      font-size: 0.72rem;
+      color: #888;
+      font-weight: 600;
+    }
+    .inv-edit-row input {
+      padding: 8px 12px;
+      border: 1.5px solid #ddd6fe;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-family: inherit;
+      text-align: right;
+      background: white;
+      transition: border-color .15s;
+    }
+    .inv-edit-row input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .inv-edit-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-edit-save {
+      flex: 2;
+      padding: 9px;
+      background: linear-gradient(135deg, var(--primary), #a855f7);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .btn-edit-cancel {
+      flex: 1;
+      padding: 9px;
+      background: white;
+      color: #888;
+      border: 1.5px solid #ddd6fe;
+      border-radius: 10px;
+      font-size: 0.88rem;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .inv-sp500-hint {
+      font-size: 0.68rem;
+      color: #aaa;
+      margin-top: 2px;
+    }
+
     /* ===== EMPTY STATE ===== */
     .empty-state { text-align: center; padding: 32px 16px; color: #bbb; }
     .empty-icon  { font-size: 2.8rem; margin-bottom: 10px; }
@@ -993,6 +1074,7 @@ let currentPrice = null;
 let exchRate     = null;
 let chartRange   = 'ALL';
 let growthChart  = null;
+let editingId    = null;
 
 // ── FORMAT HELPERS ───────────────────────────────────────────────────────────
 const fmt    = n => '₪' + Number(n).toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1203,13 +1285,47 @@ function renderList() {
   }
   const sorted = [...investments].sort((a,b) => b.date.localeCompare(a.date));
   el.innerHTML = sorted.map((inv, idx) => {
+    const num = sorted.length - idx;
+
+    if (inv.id === editingId) {
+      return `
+        <div class="inv-item editing">
+          <div class="inv-edit-header">
+            <div class="inv-pulse-num">${num}</div>
+            <div class="inv-edit-title">✏️ עריכת פעימה ${num}</div>
+          </div>
+          <div class="inv-edit-fields">
+            <div class="inv-edit-row">
+              <label>📅 תאריך</label>
+              <input type="date" id="ie-date" value="${inv.date}" />
+            </div>
+            <div class="inv-edit-row">
+              <label>💰 סכום (₪)</label>
+              <input type="number" id="ie-amount" value="${inv.amountNIS}" min="1" step="any" inputmode="decimal" />
+            </div>
+            <div class="inv-edit-row">
+              <label>📝 מאיפה הכסף?</label>
+              <input type="text" id="ie-note" value="${inv.note || ''}" placeholder="מתנה מסבא, דמי כיס..." maxlength="80" />
+            </div>
+            <div class="inv-edit-row">
+              <label>📊 מחיר S&P 500 בתאריך הקנייה</label>
+              <input type="number" id="ie-sp500" value="${inv.sp500Price}" min="1" step="0.01" />
+              <span class="inv-sp500-hint">שינוי תאריך יטען מחיר אוטומטית בשמירה</span>
+            </div>
+          </div>
+          <div class="inv-edit-actions">
+            <button class="btn-edit-cancel" onclick="cancelEdit()">ביטול</button>
+            <button class="btn-edit-save" id="ie-save-${inv.id}" onclick="saveInlineEdit('${inv.id}')">💾 שמור</button>
+          </div>
+        </div>`;
+    }
+
     const cur   = calcCurrent(inv);
     const prf   = cur !== null ? cur - inv.amountNIS : null;
     const pct   = prf !== null ? (prf / inv.amountNIS) * 100 : null;
     const isPos = pct !== null && pct >= 0;
     const badgeCls = pct === null ? 'badge-neu' : isPos ? 'badge-pos' : 'badge-neg';
     const badgeTxt = pct === null ? 'N/A' : (isPos ? '+' : '') + pct.toFixed(2) + '%';
-    const num   = sorted.length - idx;
     return `
       <div class="inv-item">
         <div class="inv-pulse-num">${num}</div>
@@ -1223,7 +1339,7 @@ function renderList() {
           <div class="inv-current">${cur !== null ? fmt(cur) : '—'}</div>
           <span class="return-badge ${badgeCls}">${badgeTxt}</span>
           <div class="inv-actions">
-            <button class="icon-btn" onclick="openEditModal('${inv.id}')" title="ערוך">✏️</button>
+            <button class="icon-btn" onclick="startEdit('${inv.id}')" title="ערוך">✏️</button>
             <button class="icon-btn del" onclick="deleteInv('${inv.id}')" title="מחק">🗑️</button>
           </div>
         </div>
@@ -1349,22 +1465,26 @@ function deleteInv(id) {
   saveInv(); updateUI();
 }
 
-// ── EDIT INVESTMENT ───────────────────────────────────────────────────────────
-function openEditModal(id) {
-  const inv = investments.find(i => i.id === id); if (!inv) return;
-  document.getElementById('editId').value     = id;
-  document.getElementById('editDate').value   = inv.date;
-  document.getElementById('editAmount').value = inv.amountNIS;
-  document.getElementById('editSP500').value  = inv.sp500Price;
-  document.getElementById('editNote').value   = inv.note || '';
-  openModal('editModal');
+// ── INLINE EDIT ───────────────────────────────────────────────────────────────
+function startEdit(id) {
+  editingId = id;
+  renderList();
+  setTimeout(() => {
+    const btn = document.getElementById(`ie-save-${id}`);
+    if (btn) btn.closest('.inv-item')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 50);
 }
 
-async function saveEdit() {
-  const id        = document.getElementById('editId').value;
-  const dateVal   = document.getElementById('editDate').value;
-  const amountVal = parseFloat(document.getElementById('editAmount').value);
-  let   sp500Val  = parseFloat(document.getElementById('editSP500').value);
+function cancelEdit() {
+  editingId = null;
+  renderList();
+}
+
+async function saveInlineEdit(id) {
+  const dateVal   = document.getElementById('ie-date').value;
+  const amountVal = parseFloat(document.getElementById('ie-amount').value);
+  let   sp500Val  = parseFloat(document.getElementById('ie-sp500').value);
+  const note      = document.getElementById('ie-note').value.trim();
 
   if (!dateVal)                     { alert('בחרי תאריך'); return; }
   if (!amountVal || amountVal <= 0) { alert('הכניסי סכום חיובי'); return; }
@@ -1372,20 +1492,21 @@ async function saveEdit() {
 
   const inv = investments.find(i => i.id === id);
   if (inv && dateVal !== inv.date) {
-    const saveBtn = document.getElementById('editSaveBtn');
-    saveBtn.textContent = '⏳...'; saveBtn.disabled = true;
+    const btn = document.getElementById(`ie-save-${id}`);
+    btn.textContent = '⏳ טוען...'; btn.disabled = true;
     const fetched = (dateVal === todayStr() && currentPrice)
       ? currentPrice
       : await (dateVal === todayStr() ? fetchCurrentPrice().then(r => r?.price) : fetchHistoricalPrice(dateVal));
-    saveBtn.textContent = '💾 שמור'; saveBtn.disabled = false;
     if (fetched) sp500Val = fetched;
+    btn.textContent = '💾 שמור'; btn.disabled = false;
   }
 
   if (!sp500Val || sp500Val <= 0) { alert('מחיר S&P 500 לא תקין'); return; }
   const idx = investments.findIndex(i => i.id === id);
-  const editNote = document.getElementById('editNote').value.trim();
-  investments[idx] = { ...investments[idx], date: dateVal, amountNIS: amountVal, sp500Price: sp500Val, note: editNote };
-  saveInv(); closeModal('editModal'); updateUI();
+  investments[idx] = { ...investments[idx], date: dateVal, amountNIS: amountVal, sp500Price: sp500Val, note };
+  editingId = null;
+  saveInv();
+  updateUI();
 }
 
 // ── GOAL ──────────────────────────────────────────────────────────────────────
