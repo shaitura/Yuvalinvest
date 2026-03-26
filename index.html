@@ -896,5 +896,558 @@
     </div>
   </div>
 
+
+<script>
+// ── MULTI-CHILD STORAGE ──────────────────────────────────────────────────────
+const childKey   = new URLSearchParams(location.search).get('child') || 'default';
+const KEY_INV    = `investments_${childKey}`;
+const KEY_SET    = `settings_${childKey}`;
+const KEY_GOAL   = `goal_${childKey}`;
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let investments  = JSON.parse(localStorage.getItem(KEY_INV)  || '[]');
+let settings     = JSON.parse(localStorage.getItem(KEY_SET)  || 'null');
+let goal         = JSON.parse(localStorage.getItem(KEY_GOAL) || 'null');
+let currentPrice = null;
+let exchRate     = null;
+let chartRange   = 'ALL';
+let growthChart  = null;
+
+// ── FORMAT HELPERS ───────────────────────────────────────────────────────────
+const fmt    = n => '₪' + Number(n).toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtNum = n =>       Number(n).toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const todayStr = () => new Date().toISOString().split('T')[0];
+
+function fmtDate(s) {
+  return new Date(s + 'T12:00:00').toLocaleDateString('he-IL', { year:'numeric', month:'long', day:'numeric' });
+}
+
+// ── PERSIST ──────────────────────────────────────────────────────────────────
+function saveInv()  { localStorage.setItem(KEY_INV,  JSON.stringify(investments)); }
+function saveSett() { localStorage.setItem(KEY_SET,  JSON.stringify(settings));    }
+function saveGoalS(){ localStorage.setItem(KEY_GOAL, JSON.stringify(goal));        }
+
+// ── API: CURRENT S&P 500 ─────────────────────────────────────────────────────
+async function fetchCurrentPrice() {
+  const SYM   = '%5EGSPC';
+  const PROXY = 'https://corsproxy.io/?';
+  const URL   = `https://query1.finance.yahoo.com/v8/finance/chart/${SYM}?range=1d&interval=1d`;
+  for (const fn of [() => fetch(URL), () => fetch(PROXY + encodeURIComponent(URL))]) {
+    try {
+      const r = await fn(); if (!r.ok) continue;
+      const d = await r.json();
+      const m = d?.chart?.result?.[0]?.meta;
+      if (m?.regularMarketPrice) return { price: m.regularMarketPrice, prev: m.chartPreviousClose || m.previousClose || null };
+    } catch(_) {}
+  }
+  return null;
+}
+
+// ── API: HISTORICAL S&P 500 ──────────────────────────────────────────────────
+async function fetchHistoricalPrice(dateStr) {
+  const SYM   = '%5EGSPC';
+  const PROXY = 'https://corsproxy.io/?';
+  const d  = new Date(dateStr + 'T12:00:00');
+  const p1 = Math.floor(d.getTime() / 1000) - 86400;
+  const p2 = Math.floor(d.getTime() / 1000) + 86400 * 5;
+  const URL = `https://query1.finance.yahoo.com/v8/finance/chart/${SYM}?period1=${p1}&period2=${p2}&interval=1d`;
+  for (const fn of [() => fetch(URL), () => fetch(PROXY + encodeURIComponent(URL))]) {
+    try {
+      const r = await fn(); if (!r.ok) continue;
+      const data   = await r.json();
+      const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
+      if (closes?.length) { const v = closes.find(p => p != null && p > 0); if (v) return v; }
+    } catch(_) {}
+  }
+  return null;
+}
+
+// ── API: EXCHANGE RATE ───────────────────────────────────────────────────────
+async function fetchExchangeRate() {
+  const URL   = 'https://edge.boi.gov.il/FusionEdgeServer/sdmx/v2/data/dataflow/BOI.STATISTICS/EXR/1.0/RER_USD_ILS--ILUDAH?lastNObservations=1&format=sdmx-json';
+  const PROXY = 'https://corsproxy.io/?';
+  for (const fn of [() => fetch(URL), () => fetch(PROXY + encodeURIComponent(URL))]) {
+    try {
+      const r = await fn(); if (!r.ok) continue;
+      const d   = await r.json();
+      const obs = d?.data?.dataSets?.[0]?.series?.['0:0:0:0']?.observations;
+      if (obs) {
+        const keys = Object.keys(obs).sort((a,b) => +b - +a);
+        const rate = obs[keys[0]]?.[0];
+        if (rate && rate > 0) return rate;
+      }
+    } catch(_) {}
+  }
+  return null;
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+async function initPrice() {
+  spinning(true);
+  const [res, rate] = await Promise.all([fetchCurrentPrice(), fetchExchangeRate()]);
+  spinning(false);
+
+  if (res) {
+    currentPrice = res.price;
+    showPriceBar(res.price, res.prev);
+    document.getElementById('apiAlert').style.display    = 'none';
+    document.getElementById('manualGroup').style.display = 'none';
+  } else {
+    document.getElementById('sp500Val').textContent      = 'לא זמין';
+    document.getElementById('apiAlert').style.display    = 'block';
+    document.getElementById('manualGroup').style.display = 'block';
+  }
+
+  if (rate) {
+    exchRate = rate;
+    document.getElementById('ilsVal').textContent = '₪' + rate.toFixed(3);
+  } else {
+    document.getElementById('ilsVal').textContent = 'לא זמין';
+  }
+
+  updateUI();
+}
+
+async function refreshPrice() {
+  spinning(true);
+  const [res, rate] = await Promise.all([fetchCurrentPrice(), fetchExchangeRate()]);
+  spinning(false);
+  if (res) {
+    currentPrice = res.price;
+    showPriceBar(res.price, res.prev);
+    document.getElementById('apiAlert').style.display    = 'none';
+    document.getElementById('manualGroup').style.display = 'none';
+  }
+  if (rate) {
+    exchRate = rate;
+    document.getElementById('ilsVal').textContent = '₪' + rate.toFixed(3);
+  }
+  updateUI();
+}
+
+function showPriceBar(price, prev) {
+  document.getElementById('sp500Val').textContent = fmtNum(price) + ' $';
+  document.getElementById('lastUpdated').textContent = 'עודכן: ' + new Date().toLocaleTimeString('he-IL');
+  const chgEl = document.getElementById('sp500Change');
+  if (prev && prev > 0) {
+    const chg = price - prev, pct = (chg / prev) * 100, sign = chg >= 0 ? '+' : '';
+    chgEl.textContent = `${sign}${pct.toFixed(2)}%`;
+    chgEl.className   = 'price-change ' + (chg >= 0 ? 'up' : 'down');
+    chgEl.style.display = 'inline';
+  }
+}
+
+function spinning(on) { document.getElementById('refreshBtn').classList.toggle('spinning', on); }
+
+// ── CALCULATION ──────────────────────────────────────────────────────────────
+function calcCurrent(inv) {
+  if (!currentPrice || !inv.sp500Price) return null;
+  return inv.amountNIS * (currentPrice / inv.sp500Price);
+}
+
+// ── UPDATE ALL UI ─────────────────────────────────────────────────────────────
+function updateUI() {
+  applySettings();
+
+  const totalInvested = investments.reduce((s, i) => s + i.amountNIS, 0);
+  document.getElementById('statInvested').textContent = fmt(totalInvested);
+  document.getElementById('beatsBadge').textContent   = `פעימה ${investments.length} • S&P 500`;
+
+  if (currentPrice && investments.length > 0) {
+    let totalCurrent = 0;
+    investments.forEach(inv => { const v = calcCurrent(inv); if (v !== null) totalCurrent += v; });
+
+    const profit = totalCurrent - totalInvested;
+    const pct    = totalInvested > 0 ? (profit / totalInvested) * 100 : 0;
+    const isPos  = profit >= 0;
+
+    document.getElementById('statCurrent').textContent = fmt(totalCurrent);
+
+    const retCard = document.getElementById('returnCard');
+    retCard.className = 'stat-card ' + (isPos ? 'accent-green' : 'accent-red');
+    const retEl = document.getElementById('statReturn');
+    retEl.textContent = (isPos ? '+' : '') + pct.toFixed(2) + '%';
+    retEl.className   = 'stat-value ' + (isPos ? 'positive' : 'negative');
+
+    const profCard = document.getElementById('profitCard');
+    profCard.className = 'stat-card ' + (isPos ? 'accent-green' : 'accent-red');
+    const profEl = document.getElementById('statProfit');
+    profEl.textContent = (isPos ? '+' : '') + fmt(profit);
+    profEl.className   = 'stat-value ' + (isPos ? 'positive' : 'negative');
+
+    updateGoalUI(totalCurrent);
+  } else {
+    ['statCurrent','statReturn','statProfit'].forEach(id => {
+      document.getElementById(id).textContent = '—';
+      document.getElementById(id).className   = 'stat-value';
+    });
+    document.getElementById('returnCard').className = 'stat-card accent-purple';
+    document.getElementById('profitCard').className = 'stat-card accent-blue';
+    updateGoalUI(0);
+  }
+
+  renderList();
+  renderChart();
+}
+
+function applySettings() {
+  if (!settings) return;
+  const name = settings.name;
+  const emoji = settings.emoji || '⭐';
+  document.getElementById('headerEmoji').textContent    = emoji;
+  document.getElementById('headerTitle').textContent    = `מסע ההשקעות של ${name}`;
+  document.getElementById('headerSubtitle').textContent = `עוקב אחרי ההשקעות של ${name} במדד S&P 500`;
+  document.title = `מסע ההשקעות של ${name} ✨`;
+}
+
+function updateGoalUI(currentVal) {
+  if (!goal) return;
+  const pct = Math.min(100, (currentVal / goal.amount) * 100);
+  const rem = Math.max(0, goal.amount - currentVal);
+  document.getElementById('goalTitle').textContent    = `${goal.emoji || '🎯'} יעד: ${goal.name}`;
+  document.getElementById('goalAmounts').textContent  = `${fmt(currentVal)} מתוך ${fmt(goal.amount)}`;
+  document.getElementById('progressFill').style.width = pct.toFixed(1) + '%';
+  document.getElementById('progressPct').textContent  = pct.toFixed(1) + '%';
+  document.getElementById('progressRemain').textContent = pct >= 100
+    ? '🎉 הגעת ליעד!'
+    : `נשאר ${fmt(rem)}`;
+}
+
+// ── RENDER LIST ───────────────────────────────────────────────────────────────
+function renderList() {
+  const el = document.getElementById('investmentsList');
+  if (!investments.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🌱</div><p>עוד אין פעימות.<br>הוסיפי את הפעימה הראשונה!</p></div>`;
+    return;
+  }
+  const sorted = [...investments].sort((a,b) => b.date.localeCompare(a.date));
+  el.innerHTML = sorted.map((inv, idx) => {
+    const cur   = calcCurrent(inv);
+    const prf   = cur !== null ? cur - inv.amountNIS : null;
+    const pct   = prf !== null ? (prf / inv.amountNIS) * 100 : null;
+    const isPos = pct !== null && pct >= 0;
+    const badgeCls = pct === null ? 'badge-neu' : isPos ? 'badge-pos' : 'badge-neg';
+    const badgeTxt = pct === null ? 'N/A' : (isPos ? '+' : '') + pct.toFixed(2) + '%';
+    const num   = sorted.length - idx;
+    return `
+      <div class="inv-item">
+        <div class="inv-pulse-num">${num}</div>
+        <div class="inv-info">
+          <div class="inv-date">📅 ${fmtDate(inv.date)}</div>
+          <div class="inv-amount">הושקע: ${fmt(inv.amountNIS)}</div>
+          <div class="inv-sp500">מדד בקנייה: $${fmtNum(inv.sp500Price)}</div>
+        </div>
+        <div class="inv-right">
+          <div class="inv-current">${cur !== null ? fmt(cur) : '—'}</div>
+          <span class="return-badge ${badgeCls}">${badgeTxt}</span>
+          <div class="inv-actions">
+            <button class="icon-btn" onclick="openEditModal('${inv.id}')" title="ערוך">✏️</button>
+            <button class="icon-btn del" onclick="deleteInv('${inv.id}')" title="מחק">🗑️</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── RENDER CHART ──────────────────────────────────────────────────────────────
+function setChartRange(range) {
+  chartRange = range;
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.range === range);
+  });
+  renderChart();
+}
+
+function getFilteredInvestments() {
+  if (chartRange === 'ALL') return [...investments];
+  const now    = new Date();
+  const cutoff = new Date(now);
+  if      (chartRange === '3M') cutoff.setMonth(cutoff.getMonth() - 3);
+  else if (chartRange === '6M') cutoff.setMonth(cutoff.getMonth() - 6);
+  else if (chartRange === '1Y') cutoff.setFullYear(cutoff.getFullYear() - 1);
+  else if (chartRange === '2Y') cutoff.setFullYear(cutoff.getFullYear() - 2);
+  const cut = cutoff.toISOString().split('T')[0];
+  return investments.filter(inv => inv.date >= cut);
+}
+
+function renderChart() {
+  const section = document.getElementById('chartSection');
+  if (!investments.length || !currentPrice) {
+    section.style.display = 'none';
+    if (growthChart) { growthChart.destroy(); growthChart = null; }
+    return;
+  }
+  section.style.display = 'block';
+
+  const filtered = getFilteredInvestments().sort((a,b) => a.date.localeCompare(b.date));
+  if (!filtered.length) return;
+
+  const labels = filtered.map(inv => fmtDate(inv.date));
+  let cumInv = 0, cumCur = 0;
+  const dataInv = [], dataCur = [];
+  filtered.forEach(inv => {
+    cumInv += inv.amountNIS;
+    const cur = calcCurrent(inv);
+    cumCur += cur !== null ? cur : inv.amountNIS;
+    dataInv.push(+cumInv.toFixed(2));
+    dataCur.push(+cumCur.toFixed(2));
+  });
+
+  const ctx = document.getElementById('growthChart').getContext('2d');
+  if (growthChart) growthChart.destroy();
+  growthChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets: [
+      { label:'הושקע',     data: dataInv, borderColor:'#94a3b8', backgroundColor:'rgba(148,163,184,0.08)', borderDash:[5,4], fill:true, tension:0.4, pointRadius:4, pointBackgroundColor:'#94a3b8' },
+      { label:'שווי נוכחי', data: dataCur, borderColor:'#7c3aed', backgroundColor:'rgba(124,58,237,0.1)',   fill:true, tension:0.4, pointRadius:4, pointBackgroundColor:'#7c3aed' },
+    ]},
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position:'top', labels:{ font:{ family:'Segoe UI', size:11 } } },
+        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + fmt(c.raw) } }
+      },
+      scales: {
+        y: { ticks: { callback: v => '₪' + Number(v).toLocaleString('he-IL'), font:{size:10} }, grid:{ color:'rgba(0,0,0,0.05)' } },
+        x: { ticks: { font:{size:9}, maxRotation:30 }, grid:{ display:false } }
+      }
+    }
+  });
+}
+
+// ── ADD INVESTMENT ────────────────────────────────────────────────────────────
+async function addInvestment() {
+  const dateVal   = document.getElementById('fDate').value;
+  const amountVal = parseFloat(document.getElementById('fAmount').value);
+  const manualVal = parseFloat(document.getElementById('fManual').value || '0');
+
+  if (!dateVal)                     { alert('בחרי תאריך'); return; }
+  if (!amountVal || amountVal <= 0) { alert('הכניסי סכום חיובי'); return; }
+  if (dateVal > todayStr())         { alert('לא ניתן לבחור תאריך עתידי'); return; }
+
+  setAdding(true);
+  let sp500 = null;
+  const isToday = dateVal === todayStr();
+
+  if (isToday && currentPrice)       { sp500 = currentPrice; }
+  else if (isToday)                  { const r = await fetchCurrentPrice(); if (r) { currentPrice = r.price; sp500 = r.price; showPriceBar(r.price, r.prev); } }
+  else                               { sp500 = await fetchHistoricalPrice(dateVal); }
+  setAdding(false);
+
+  if (!sp500) {
+    if (manualVal > 0) { sp500 = manualVal; }
+    else {
+      document.getElementById('apiAlert').style.display    = 'block';
+      document.getElementById('manualGroup').style.display = 'block';
+      alert('לא ניתן לקבל מחיר אוטומטית. הכניסי ידנית.');
+      return;
+    }
+  }
+
+  investments.push({ id: Date.now().toString(), date: dateVal, amountNIS: amountVal, sp500Price: sp500 });
+  saveInv();
+  document.getElementById('fAmount').value = '';
+  document.getElementById('fManual').value = '';
+  celebrate();
+  updateUI();
+}
+
+function setAdding(on) {
+  const btn = document.getElementById('addBtn');
+  btn.disabled    = on;
+  btn.textContent = on ? '⏳ מביא מחיר...' : '⚡ הוסיפי פעימה!';
+}
+
+// ── DELETE ────────────────────────────────────────────────────────────────────
+function deleteInv(id) {
+  if (!confirm('למחוק פעימה זו?')) return;
+  investments = investments.filter(i => i.id !== id);
+  saveInv(); updateUI();
+}
+
+// ── EDIT INVESTMENT ───────────────────────────────────────────────────────────
+function openEditModal(id) {
+  const inv = investments.find(i => i.id === id); if (!inv) return;
+  document.getElementById('editId').value     = id;
+  document.getElementById('editDate').value   = inv.date;
+  document.getElementById('editAmount').value = inv.amountNIS;
+  document.getElementById('editSP500').value  = inv.sp500Price;
+  openModal('editModal');
+}
+
+async function saveEdit() {
+  const id        = document.getElementById('editId').value;
+  const dateVal   = document.getElementById('editDate').value;
+  const amountVal = parseFloat(document.getElementById('editAmount').value);
+  let   sp500Val  = parseFloat(document.getElementById('editSP500').value);
+
+  if (!dateVal)                     { alert('בחרי תאריך'); return; }
+  if (!amountVal || amountVal <= 0) { alert('הכניסי סכום חיובי'); return; }
+  if (dateVal > todayStr())         { alert('לא ניתן לבחור תאריך עתידי'); return; }
+
+  const inv = investments.find(i => i.id === id);
+  if (inv && dateVal !== inv.date) {
+    const saveBtn = document.getElementById('editSaveBtn');
+    saveBtn.textContent = '⏳...'; saveBtn.disabled = true;
+    const fetched = (dateVal === todayStr() && currentPrice)
+      ? currentPrice
+      : await (dateVal === todayStr() ? fetchCurrentPrice().then(r => r?.price) : fetchHistoricalPrice(dateVal));
+    saveBtn.textContent = '💾 שמור'; saveBtn.disabled = false;
+    if (fetched) sp500Val = fetched;
+  }
+
+  if (!sp500Val || sp500Val <= 0) { alert('מחיר S&P 500 לא תקין'); return; }
+  const idx = investments.findIndex(i => i.id === id);
+  investments[idx] = { ...investments[idx], date: dateVal, amountNIS: amountVal, sp500Price: sp500Val };
+  saveInv(); closeModal('editModal'); updateUI();
+}
+
+// ── GOAL ──────────────────────────────────────────────────────────────────────
+function openGoalModal() {
+  document.getElementById('goalNameInput').value   = goal?.name   || '';
+  document.getElementById('goalAmountInput').value = goal?.amount || '';
+  document.getElementById('goalEmojiInput').value  = goal?.emoji  || '🎯';
+  openModal('goalModal');
+}
+
+function saveGoalModal() {
+  const name   = document.getElementById('goalNameInput').value.trim();
+  const amount = parseFloat(document.getElementById('goalAmountInput').value);
+  const emoji  = document.getElementById('goalEmojiInput').value.trim() || '🎯';
+  if (!name)                { alert('הכניסי שם ליעד'); return; }
+  if (!amount || amount<=0) { alert('הכניסי סכום תקין'); return; }
+  goal = { name, amount, emoji };
+  saveGoalS(); closeModal('goalModal'); updateUI();
+}
+
+// ── SETTINGS ──────────────────────────────────────────────────────────────────
+function openSettingsModal() {
+  document.getElementById('settingsNameInput').value = settings?.name || '';
+  const curEmoji = settings?.emoji || '⭐';
+  document.querySelectorAll('#settingsEmojiPicker .emoji-opt').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.e === curEmoji);
+  });
+  openModal('settingsModal');
+}
+
+function saveSettingsModal() {
+  const name  = document.getElementById('settingsNameInput').value.trim();
+  const emoji = document.querySelector('#settingsEmojiPicker .emoji-opt.selected')?.dataset?.e || '⭐';
+  if (!name) { alert('הכניסי שם'); return; }
+  settings = { name, emoji };
+  saveSett(); closeModal('settingsModal'); updateUI();
+}
+
+function confirmClearData() {
+  if (!confirm('למחוק את כל הנתונים? פעולה זו לא ניתנת לביטול!')) return;
+  investments = []; saveInv(); updateUI();
+}
+
+// ── SETUP WIZARD ──────────────────────────────────────────────────────────────
+function finishSetup() {
+  const name      = document.getElementById('setupName').value.trim();
+  const goalName  = document.getElementById('setupGoalName').value.trim();
+  const goalAmt   = parseFloat(document.getElementById('setupGoalAmount').value);
+  const emoji     = document.querySelector('#setupEmojiPicker .emoji-opt.selected')?.dataset?.e || '⭐';
+
+  if (!name) { alert('הכניסי את שמך'); return; }
+  settings = { name, emoji };
+  saveSett();
+
+  if (goalName && goalAmt > 0) {
+    goal = { name: goalName, amount: goalAmt, emoji: '🎯' };
+    saveGoalS();
+  } else if (!goal) {
+    goal = { name: 'יעד ראשון', amount: 1000, emoji: '🎯' };
+    saveGoalS();
+  }
+
+  document.getElementById('setupOverlay').classList.remove('open');
+  updateUI();
+}
+
+// ── EMOJI PICKERS ─────────────────────────────────────────────────────────────
+function initEmojiPickers() {
+  document.querySelectorAll('.emoji-picker').forEach(picker => {
+    picker.querySelectorAll('.emoji-opt').forEach(btn => {
+      btn.addEventListener('click', () => {
+        picker.querySelectorAll('.emoji-opt').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+      });
+    });
+  });
+}
+
+// ── CHART FILTER BUTTONS ──────────────────────────────────────────────────────
+function initChartFilters() {
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => setChartRange(btn.dataset.range));
+  });
+}
+
+// ── MODALS ────────────────────────────────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('open');    }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+});
+
+// ── EDUCATIONAL ACCORDION ─────────────────────────────────────────────────────
+function toggleEdu() {
+  const content = document.getElementById('eduContent');
+  const arrow   = document.getElementById('eduArrow');
+  const open    = content.style.display === 'none';
+  content.style.display = open ? 'block' : 'none';
+  arrow.textContent     = open ? '▲' : '▼';
+}
+
+function toggleEduItem(header) {
+  const body  = header.nextElementSibling;
+  const arrow = header.querySelector('.edu-item-arrow');
+  const open  = body.classList.toggle('open');
+  arrow.textContent = open ? '−' : '+';
+}
+
+// ── CELEBRATE ─────────────────────────────────────────────────────────────────
+function celebrate() {
+  const colors = ['#7c3aed','#f59e0b','#10b981','#ef4444','#ec4899','#06b6d4','#a855f7'];
+  for (let i = 0; i < 45; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'confetti-piece';
+      const size = (Math.random() * 10 + 6) + 'px';
+      Object.assign(el.style, {
+        left:              Math.random() * 100 + 'vw',
+        top:               '-20px',
+        width:             size,
+        height:            size,
+        background:        colors[Math.floor(Math.random() * colors.length)],
+        animationDuration: (Math.random() * 2 + 2) + 's',
+        borderRadius:      Math.random() > 0.5 ? '50%' : '3px',
+      });
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 5000);
+    }, i * 55);
+  }
+}
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+document.getElementById('fDate').value = todayStr();
+initEmojiPickers();
+initChartFilters();
+
+if (!settings) {
+  document.getElementById('setupOverlay').classList.add('open');
+} else {
+  if (!goal) {
+    goal = { name: 'יעד ראשון', amount: 1000, emoji: '🎯' };
+    saveGoalS();
+  }
+  applySettings();
+}
+
+initPrice();
+</script>
 </body>
 </html>
