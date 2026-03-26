@@ -723,6 +723,9 @@
   </style>
   <!-- Tooltip popup element -->
   <div class="tip-popup" id="tipPopup"></div>
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
@@ -1060,21 +1063,33 @@
 
 
 <script>
-// ── MULTI-CHILD STORAGE ──────────────────────────────────────────────────────
-const childKey   = new URLSearchParams(location.search).get('child') || 'default';
-const KEY_INV    = `investments_${childKey}`;
-const KEY_SET    = `settings_${childKey}`;
-const KEY_GOAL   = `goal_${childKey}`;
+// ── FIREBASE ──────────────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey:            "AIzaSyDzNyGvg18NgWbxgmInZx6P0mdAl8H82TQ",
+  authDomain:        "yuvalinvest-3c538.firebaseapp.com",
+  databaseURL:       "https://yuvalinvest-3c538-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId:         "yuvalinvest-3c538",
+  storageBucket:     "yuvalinvest-3c538.firebasestorage.app",
+  messagingSenderId: "1022671236249",
+  appId:             "1:1022671236249:web:8cbafbbd2353eff4855c08"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// ── MULTI-CHILD KEY ───────────────────────────────────────────────────────────
+const childKey = new URLSearchParams(location.search).get('child') || 'default';
+const FB_PATH  = `children/${childKey}`;
 
 // ── STATE ────────────────────────────────────────────────────────────────────
-let investments  = JSON.parse(localStorage.getItem(KEY_INV)  || '[]');
-let settings     = JSON.parse(localStorage.getItem(KEY_SET)  || 'null');
-let goal         = JSON.parse(localStorage.getItem(KEY_GOAL) || 'null');
+let investments  = [];
+let settings     = null;
+let goal         = null;
 let currentPrice = null;
 let exchRate     = null;
 let chartRange   = 'ALL';
 let growthChart  = null;
 let editingId    = null;
+let fbReady      = false;
 
 // ── FORMAT HELPERS ───────────────────────────────────────────────────────────
 const fmt    = n => '₪' + Number(n).toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1085,10 +1100,16 @@ function fmtDate(s) {
   return new Date(s + 'T12:00:00').toLocaleDateString('he-IL', { year:'numeric', month:'long', day:'numeric' });
 }
 
-// ── PERSIST ──────────────────────────────────────────────────────────────────
-function saveInv()  { localStorage.setItem(KEY_INV,  JSON.stringify(investments)); }
-function saveSett() { localStorage.setItem(KEY_SET,  JSON.stringify(settings));    }
-function saveGoalS(){ localStorage.setItem(KEY_GOAL, JSON.stringify(goal));        }
+// ── PERSIST TO FIREBASE ───────────────────────────────────────────────────────
+function invToObj(arr) {
+  const obj = {};
+  arr.forEach(inv => { obj[inv.id] = inv; });
+  return obj;
+}
+
+function saveInv()  { db.ref(`${FB_PATH}/investments`).set(invToObj(investments)); }
+function saveSett() { db.ref(`${FB_PATH}/settings`).set(settings); }
+function saveGoalS(){ db.ref(`${FB_PATH}/goal`).set(goal); }
 
 // ── API: CURRENT S&P 500 ─────────────────────────────────────────────────────
 async function fetchCurrentPrice() {
@@ -1666,17 +1687,31 @@ document.getElementById('fDate').value = todayStr();
 initEmojiPickers();
 initChartFilters();
 
-if (!settings) {
-  document.getElementById('setupOverlay').classList.add('open');
-} else {
-  if (!goal) {
-    goal = { name: 'יעד ראשון', amount: 1000, emoji: '🎯' };
-    saveGoalS();
-  }
-  applySettings();
-}
+// האזנה לשינויים בזמן אמת מכל מכשיר
+db.ref(FB_PATH).on('value', snap => {
+  const data = snap.val() || {};
 
-initPrice();
+  investments = data.investments ? Object.values(data.investments) : [];
+  settings    = data.settings    || null;
+  goal        = data.goal        || null;
+
+  if (!fbReady) {
+    fbReady = true;
+    // הפעלה ראשונה
+    if (!settings) {
+      document.getElementById('setupOverlay').classList.add('open');
+    } else {
+      if (!goal) {
+        goal = { name: 'יעד ראשון', amount: 1000, emoji: '🎯' };
+        saveGoalS();
+      }
+    }
+    initPrice();
+  } else {
+    // עדכון מכשיר אחר — רענן UI בלי לקרוא API מחדש
+    updateUI();
+  }
+});
 </script>
 </body>
 </html>
