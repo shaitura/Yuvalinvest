@@ -4,41 +4,95 @@
       <stop offset="0%" stop-color="#1e1b4b"/>
       <stop offset="100%" stop-color="#7c3aed"/>
     </linearGradient>
+    <linearGradient id="pig" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fda4af"/>
+      <stop offset="100%" stop-color="#fb7185"/>
+    </linearGradient>
     <linearGradient id="coin" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#fbbf24"/>
       <stop offset="100%" stop-color="#f59e0b"/>
     </linearGradient>
+    <linearGradient id="ear" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f9a8b4"/>
+      <stop offset="100%" stop-color="#f472b6"/>
+    </linearGradient>
   </defs>
 
   <!-- Background rounded rect -->
-  <rect width="512" height="512" rx="100" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="90" fill="url(#bg)"/>
 
-  <!-- Decorative dots -->
-  <circle cx="80"  cy="80"  r="12" fill="white" opacity="0.15"/>
-  <circle cx="432" cy="80"  r="8"  fill="white" opacity="0.12"/>
-  <circle cx="60"  cy="420" r="8"  fill="white" opacity="0.10"/>
-  <circle cx="440" cy="430" r="14" fill="white" opacity="0.12"/>
-  <circle cx="150" cy="440" r="6"  fill="#f59e0b" opacity="0.5"/>
-  <circle cx="370" cy="60"  r="6"  fill="#f59e0b" opacity="0.5"/>
+  <!-- Sparkle stars in corners -->
+  <!-- Top-left star -->
+  <g transform="translate(72,68)">
+    <polygon points="0,-18 4,-6 16,0 4,6 0,18 -4,6 -16,0 -4,-6" fill="#fbbf24" opacity="0.9"/>
+  </g>
+  <!-- Top-right star -->
+  <g transform="translate(440,72)">
+    <polygon points="0,-13 3,-4 12,0 3,4 0,13 -3,4 -12,0 -3,-4" fill="#fbbf24" opacity="0.8"/>
+  </g>
+  <!-- Bottom-left small star -->
+  <g transform="translate(88,438)">
+    <polygon points="0,-10 2,-3 9,0 2,3 0,10 -2,3 -9,0 -2,-3" fill="#fbbf24" opacity="0.7"/>
+  </g>
+  <!-- Bottom-right star -->
+  <g transform="translate(430,435)">
+    <polygon points="0,-16 3,-5 14,0 3,5 0,16 -3,5 -14,0 -3,-5" fill="#fbbf24" opacity="0.85"/>
+  </g>
 
-  <!-- Gold coin -->
-  <circle cx="256" cy="235" r="148" fill="url(#coin)"/>
-  <circle cx="256" cy="235" r="128" fill="#fde68a" opacity="0.25"/>
+  <!-- Coin slot on top of piggy bank -->
+  <rect x="218" y="78" width="76" height="16" rx="8" fill="#78350f" opacity="0.7"/>
 
-  <!-- Shine on coin -->
-  <ellipse cx="205" cy="180" rx="38" ry="22" fill="white" opacity="0.22" transform="rotate(-35 205 180)"/>
+  <!-- Gold coin dropping into slot -->
+  <ellipse cx="256" cy="62" rx="32" ry="32" fill="url(#coin)"/>
+  <ellipse cx="256" cy="62" rx="24" ry="24" fill="#fde68a" opacity="0.5"/>
+  <text x="256" y="72" text-anchor="middle" font-size="24" font-weight="bold"
+        font-family="Arial, sans-serif" fill="#78350f">₪</text>
 
-  <!-- ₪ symbol -->
-  <text x="256" y="315"
-        text-anchor="middle"
-        font-size="195"
-        font-weight="bold"
-        font-family="Arial Hebrew, Arial, sans-serif"
-        fill="#78350f">₪</text>
+  <!-- Left ear -->
+  <ellipse cx="138" cy="198" rx="44" ry="52" fill="url(#ear)"/>
+  <ellipse cx="138" cy="198" rx="28" ry="34" fill="#fce7f3" opacity="0.7"/>
 
-  <!-- Stars bottom -->
-  <polygon points="110,395 118,420 145,420 123,436 131,461 110,445 89,461 97,436 75,420 102,420"
-           fill="#f59e0b" opacity="0.85"/>
-  <polygon points="402,390 408,408 428,408 412,420 418,438 402,426 386,438 392,420 376,408 396,408"
-           fill="#f59e0b" opacity="0.7"/>
+  <!-- Right ear -->
+  <ellipse cx="374" cy="198" rx="44" ry="52" fill="url(#ear)"/>
+  <ellipse cx="374" cy="198" rx="28" ry="34" fill="#fce7f3" opacity="0.7"/>
+
+  <!-- Main pig body/face - big circle -->
+  <circle cx="256" cy="300" r="178" fill="url(#pig)"/>
+
+  <!-- Face shine -->
+  <ellipse cx="200" cy="228" rx="52" ry="30" fill="white" opacity="0.18" transform="rotate(-30 200 228)"/>
+
+  <!-- Left eye white -->
+  <circle cx="204" cy="262" r="28" fill="white"/>
+  <!-- Left pupil -->
+  <circle cx="208" cy="265" r="16" fill="#1e1b4b"/>
+  <!-- Left eye shine -->
+  <circle cx="202" cy="258" r="6" fill="white"/>
+
+  <!-- Right eye white -->
+  <circle cx="308" cy="262" r="28" fill="white"/>
+  <!-- Right pupil -->
+  <circle cx="312" cy="265" r="16" fill="#1e1b4b"/>
+  <!-- Right eye shine -->
+  <circle cx="306" cy="258" r="6" fill="white"/>
+
+  <!-- Snout -->
+  <ellipse cx="256" cy="336" rx="62" ry="48" fill="#f9a8b4" opacity="0.85"/>
+  <!-- Left nostril -->
+  <ellipse cx="234" cy="340" rx="12" ry="10" fill="#e11d48" opacity="0.5"/>
+  <!-- Right nostril -->
+  <ellipse cx="278" cy="340" rx="12" ry="10" fill="#e11d48" opacity="0.5"/>
+
+  <!-- Smile -->
+  <path d="M 214 372 Q 256 404 298 372" stroke="#c2185b" stroke-width="6" fill="none" stroke-linecap="round"/>
+
+  <!-- Left rosy cheek -->
+  <ellipse cx="170" cy="316" rx="30" ry="20" fill="#fb7185" opacity="0.45"/>
+  <!-- Right rosy cheek -->
+  <ellipse cx="342" cy="316" rx="30" ry="20" fill="#fb7185" opacity="0.45"/>
+
+  <!-- Small decorative dots -->
+  <circle cx="256" cy="470" r="8" fill="white" opacity="0.15"/>
+  <circle cx="220" cy="472" r="5" fill="white" opacity="0.10"/>
+  <circle cx="292" cy="472" r="5" fill="white" opacity="0.10"/>
 </svg>
