@@ -2,312 +2,1250 @@
 <html dir="rtl" lang="he">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>🚀 מסע ההשקעות שלי</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>מסע ההשקעות ✨</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
+    /* ===== VARIABLES ===== */
+    :root {
+      --primary:       #7c3aed;
+      --primary-light: #a78bfa;
+      --secondary:     #f59e0b;
+      --success:       #10b981;
+      --danger:        #ef4444;
+      --bg1: #0f0c29;
+      --bg2: #302b63;
+      --bg3: #24243e;
+    }
+
+    /* ===== RESET & BASE ===== */
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
-    .container { max-width: 920px; margin: 0 auto; }
-    .header { text-align: center; color: white; margin-bottom: 28px; }
-    .header h1 { font-size: 2.4rem; text-shadow: 2px 2px 6px rgba(0,0,0,0.3); }
-    .header p  { font-size: 1rem; opacity: 0.85; margin-top: 6px; }
-    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 22px; }
-    .stat-card { background: white; border-radius: 18px; padding: 18px 14px; text-align: center; box-shadow: 0 8px 28px rgba(0,0,0,0.12); transition: transform .2s; }
-    .stat-card:hover { transform: translateY(-4px); }
-    .stat-card .icon  { font-size: 1.9rem; margin-bottom: 6px; }
-    .stat-card .label { color: #777; font-size: 0.78rem; margin-bottom: 4px; }
-    .stat-card .value { font-size: 1.4rem; font-weight: 700; color: #222; }
-    .stat-card .value.positive { color: #16a34a; }
-    .stat-card .value.negative { color: #dc2626; }
-    .price-bar { background: white; border-radius: 18px; padding: 14px 22px; margin-bottom: 12px; box-shadow: 0 8px 28px rgba(0,0,0,0.12); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
-    .price-bar .label { color: #555; font-size: 0.9rem; }
-    .price-bar .price-right { display: flex; align-items: center; gap: 10px; }
-    #sp500Display { font-size: 1.3rem; font-weight: 700; color: #222; }
-    #sp500Change { font-size: 0.85rem; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
-    #sp500Change.positive { background: #dcfce7; color: #15803d; }
-    #sp500Change.negative { background: #fee2e2; color: #b91c1c; }
-    .refresh-btn { background: none; border: none; cursor: pointer; font-size: 1.1rem; opacity: 0.65; transition: opacity .2s, transform .4s; }
-    .refresh-btn:hover { opacity: 1; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, var(--bg1), var(--bg2), var(--bg3));
+      min-height: 100vh;
+      padding: 16px 16px 80px;
+      color: #1a1a2e;
+    }
+
+    /* ===== LAYOUT ===== */
+    .container { max-width: 480px; margin: 0 auto; }
+
+    /* ===== HEADER ===== */
+    .header {
+      text-align: center;
+      color: white;
+      padding: 24px 0 16px;
+      margin-bottom: 16px;
+    }
+    .child-emoji {
+      display: block;
+      font-size: 3.2rem;
+      margin-bottom: 10px;
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-8px); }
+    }
+    .header h1 {
+      font-size: 1.7rem;
+      font-weight: 800;
+      text-shadow: 0 2px 12px rgba(0,0,0,0.35);
+      margin-bottom: 4px;
+    }
+    .header p {
+      font-size: 0.83rem;
+      opacity: 0.75;
+      margin-bottom: 10px;
+    }
+    .beats-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--secondary), #f97316);
+      color: white;
+      padding: 5px 16px;
+      border-radius: 99px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+    }
+
+    /* ===== PRICE BAR ===== */
+    .price-bar {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 18px;
+      padding: 14px 18px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: white;
+    }
+    .price-left  { flex: 1; }
+    .price-right { flex: 1; text-align: left; }
+    .price-label { font-size: 0.75rem; opacity: 0.7; margin-bottom: 2px; }
+    .price-row   { display: flex; align-items: center; gap: 8px; }
+    .price-value { font-size: 1.1rem; font-weight: 700; }
+    .price-change {
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 99px;
+      font-weight: 600;
+    }
+    .price-change.up   { background: rgba(16,185,129,0.25); color: #6ee7b7; }
+    .price-change.down { background: rgba(239,68,68,0.25);  color: #fca5a5; }
+    .refresh-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1.1rem;
+      color: white;
+      opacity: 0.65;
+      padding: 6px;
+      transition: opacity .2s, transform .4s;
+      flex-shrink: 0;
+    }
+    .refresh-btn:hover   { opacity: 1; }
     .refresh-btn.spinning { animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .alert { padding: 12px 18px; border-radius: 14px; margin-bottom: 16px; font-size: 0.88rem; line-height: 1.5; }
-    .alert a { color: inherit; font-weight: 600; }
-    .alert-warning { background: #fff7ed; border: 1px solid #fdba74; color: #9a3412; }
-    .card { background: white; border-radius: 18px; padding: 24px; margin-bottom: 22px; box-shadow: 0 8px 28px rgba(0,0,0,0.12); }
-    .card h2 { margin-bottom: 18px; color: #333; font-size: 1.15rem; }
-    .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 16px; }
-    .form-group { display: flex; flex-direction: column; gap: 5px; }
-    .form-group label { font-size: 0.82rem; color: #555; font-weight: 600; }
-    .form-group input { padding: 10px 14px; border: 2px solid #e5e7eb; border-radius: 12px; font-size: 1rem; transition: border-color .2s; text-align: right; font-family: inherit; }
-    .form-group input:focus { outline: none; border-color: #764ba2; }
-    .form-group.hidden { display: none; }
-    .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 12px 28px; border-radius: 12px; font-size: 1rem; cursor: pointer; width: 100%; transition: transform .2s, box-shadow .2s; font-family: inherit; }
-    .btn-primary:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 5px 18px rgba(102,126,234,0.45); }
+
+    /* ===== ALERT ===== */
+    .alert {
+      padding: 12px 16px;
+      border-radius: 14px;
+      margin-bottom: 14px;
+      font-size: 0.84rem;
+      line-height: 1.55;
+    }
+    .alert a { color: inherit; font-weight: 700; }
+    .alert-warn {
+      background: #fff7ed;
+      border: 1px solid #fdba74;
+      color: #9a3412;
+    }
+
+    /* ===== CARDS ===== */
+    .card {
+      background: white;
+      border-radius: 20px;
+      padding: 20px;
+      margin-bottom: 14px;
+      box-shadow: 0 6px 28px rgba(0,0,0,0.13);
+    }
+    .card-title {
+      font-size: 0.98rem;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    /* ===== STATS GRID ===== */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .stat-card {
+      background: white;
+      border-radius: 18px;
+      padding: 16px 14px;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.10);
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::after {
+      content: '';
+      position: absolute;
+      top: 0; right: 0;
+      width: 5px; height: 100%;
+      border-radius: 0 18px 18px 0;
+    }
+    .accent-blue::after   { background: #3b82f6; }
+    .accent-purple::after { background: var(--primary); }
+    .accent-green::after  { background: var(--success); }
+    .accent-red::after    { background: var(--danger); }
+    .stat-icon  { font-size: 1.55rem; display: block; margin-bottom: 6px; }
+    .stat-label { font-size: 0.71rem; color: #888; margin-bottom: 4px; }
+    .stat-value { font-size: 1.25rem; font-weight: 800; color: #222; }
+    .stat-value.positive { color: var(--success); }
+    .stat-value.negative { color: var(--danger); }
+
+    /* ===== GOAL CARD ===== */
+    .goal-card { }
+    .goal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 14px;
+    }
+    .goal-title  { font-size: 0.98rem; font-weight: 700; color: #333; }
+    .goal-amounts { font-size: 0.78rem; color: #777; margin-top: 3px; }
+    .progress-track {
+      background: #f0f0f0;
+      border-radius: 99px;
+      height: 13px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .progress-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary));
+      transition: width 1.2s cubic-bezier(.4,0,.2,1);
+      position: relative;
+      overflow: hidden;
+    }
+    .progress-fill::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent 30%, rgba(255,255,255,0.35) 50%, transparent 70%);
+      animation: shimmer 2.2s infinite;
+    }
+    @keyframes shimmer {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+    .progress-labels {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.76rem;
+    }
+    .progress-pct    { font-weight: 700; color: var(--primary); }
+    .progress-remain { color: #888; }
+
+    /* ===== CHART FILTERS ===== */
+    .chart-filters {
+      display: flex;
+      gap: 7px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      padding: 5px 13px;
+      border-radius: 99px;
+      border: 2px solid #e5e7eb;
+      background: white;
+      font-size: 0.78rem;
+      font-family: inherit;
+      cursor: pointer;
+      color: #666;
+      transition: all .18s;
+    }
+    .filter-btn:hover  { border-color: var(--primary-light); color: var(--primary); }
+    .filter-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+      font-weight: 700;
+    }
+
+    /* ===== EDUCATIONAL ===== */
+    .edu-toggle { cursor: pointer; user-select: none; }
+    .edu-item {
+      border: 1.5px solid #ede9fe;
+      border-radius: 13px;
+      overflow: hidden;
+      margin-bottom: 8px;
+    }
+    .edu-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 11px 14px;
+      cursor: pointer;
+      background: #faf5ff;
+      user-select: none;
+      transition: background .18s;
+    }
+    .edu-item-header:hover  { background: #f3e8ff; }
+    .edu-item-title { font-size: 0.88rem; font-weight: 700; color: var(--primary); }
+    .edu-item-arrow { font-size: 1rem; color: var(--primary-light); font-weight: 700; }
+    .edu-item-body {
+      display: none;
+      padding: 12px 14px;
+      font-size: 0.85rem;
+      line-height: 1.7;
+      color: #444;
+    }
+    .edu-item-body.open { display: block; }
+    .edu-item-body strong { color: var(--primary); }
+
+    /* ===== FORMS ===== */
+    .form-group { margin-bottom: 14px; }
+    .form-group label {
+      display: block;
+      font-size: 0.8rem;
+      color: #555;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 11px 14px;
+      border: 2px solid #e5e7eb;
+      border-radius: 13px;
+      font-size: 1rem;
+      font-family: inherit;
+      transition: border-color .18s;
+      text-align: right;
+      background: white;
+      color: #222;
+    }
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .field-hint {
+      display: block;
+      font-size: 0.73rem;
+      color: #aaa;
+      margin-top: 4px;
+    }
+    .emoji-input { font-size: 1.4rem; text-align: center; }
+
+    /* ===== BUTTONS ===== */
+    .btn-primary {
+      display: block;
+      width: 100%;
+      padding: 13px;
+      background: linear-gradient(135deg, var(--primary), #a855f7);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      font-size: 1rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(124,58,237,0.35);
+      transition: transform .18s, box-shadow .18s;
+    }
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 22px rgba(124,58,237,0.45);
+    }
     .btn-primary:disabled { opacity: 0.6; cursor: default; }
-    .investment-item { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; border-radius: 14px; margin-bottom: 10px; background: #f8fafc; border: 1px solid #e5e7eb; transition: background .2s; gap: 10px; }
-    .investment-item:hover { background: #f1f5f9; }
-    .investment-item .left-side { display: flex; align-items: center; gap: 8px; }
-    .investment-item .info { display: flex; flex-direction: column; gap: 3px; }
-    .investment-item .inv-date { font-size: 0.78rem; color: #888; }
-    .investment-item .inv-amount { font-size: 0.98rem; font-weight: 700; color: #222; }
-    .investment-item .inv-sp500 { font-size: 0.76rem; color: #aaa; }
-    .investment-item .right-side { text-align: left; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-    .investment-item .current-val { font-size: 1rem; font-weight: 700; color: #222; }
-    .return-badge { font-size: 0.78rem; padding: 2px 9px; border-radius: 20px; font-weight: 600; }
-    .return-badge.positive { background: #dcfce7; color: #15803d; }
-    .return-badge.negative { background: #fee2e2; color: #b91c1c; }
-    .return-badge.neutral  { background: #f3f4f6; color: #6b7280; }
-    .delete-btn { background: none; border: none; cursor: pointer; color: #d1d5db; font-size: 1.1rem; padding: 4px; transition: color .2s; flex-shrink: 0; }
-    .delete-btn:hover { color: #ef4444; }
-    .edit-btn { background: none; border: none; cursor: pointer; color: #d1d5db; font-size: 1rem; padding: 4px; transition: color .2s; flex-shrink: 0; }
-    .edit-btn:hover { color: #764ba2; }
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
-    .modal-overlay.open { display: flex; }
-    .modal { background: white; border-radius: 20px; padding: 28px; width: 100%; max-width: 440px; box-shadow: 0 20px 60px rgba(0,0,0,0.25); }
-    .modal h3 { margin-bottom: 20px; color: #333; font-size: 1.1rem; }
-    .modal .form-group { margin-bottom: 14px; }
-    .modal-btns { display: flex; gap: 10px; margin-top: 20px; }
-    .btn-secondary { flex: 1; padding: 11px; border: 2px solid #e5e7eb; background: white; border-radius: 12px; font-size: 0.95rem; cursor: pointer; font-family: inherit; color: #555; transition: border-color .2s; }
+
+    .btn-secondary {
+      flex: 1;
+      padding: 11px;
+      background: white;
+      color: #555;
+      border: 2px solid #e5e7eb;
+      border-radius: 12px;
+      font-size: 0.93rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: border-color .18s;
+    }
     .btn-secondary:hover { border-color: #94a3b8; }
-    .btn-save { flex: 2; padding: 11px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 12px; font-size: 0.95rem; cursor: pointer; font-family: inherit; transition: opacity .2s; }
-    .btn-save:hover { opacity: 0.9; }
-    .empty-state { text-align: center; padding: 36px; color: #aaa; }
-    .empty-state .big-icon { font-size: 3rem; margin-bottom: 10px; }
-    .footer { text-align: center; color: rgba(255,255,255,0.65); font-size: 0.78rem; margin-top: 4px; }
-    .confetti { position: fixed; border-radius: 50%; pointer-events: none; animation: confettiFall 3s ease-in forwards; }
-    @keyframes confettiFall { 0% { transform: translateY(-80px) rotate(0deg); opacity: 1; } 100% { transform: translateY(105vh) rotate(720deg); opacity: 0; } }
-    @media (max-width: 560px) { .header h1 { font-size: 1.75rem; } .stat-card .value { font-size: 1.2rem; } }
+
+    .btn-save {
+      flex: 2;
+      padding: 11px;
+      background: linear-gradient(135deg, var(--primary), #a855f7);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.93rem;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity .18s;
+    }
+    .btn-save:hover:not(:disabled) { opacity: 0.88; }
+    .btn-save:disabled { opacity: 0.6; cursor: default; }
+
+    .btn-danger-soft {
+      width: 100%;
+      padding: 9px 14px;
+      background: none;
+      border: 1.5px solid #fee2e2;
+      color: var(--danger);
+      border-radius: 11px;
+      font-size: 0.82rem;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background .18s;
+    }
+    .btn-danger-soft:hover { background: #fff1f2; }
+
+    .icon-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      color: #c4b5fd;
+      padding: 4px 6px;
+      transition: color .18s;
+      line-height: 1;
+    }
+    .icon-btn:hover { color: var(--primary); }
+    .icon-btn.del:hover { color: var(--danger); }
+
+    /* ===== INVESTMENT ITEMS ===== */
+    .inv-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 13px;
+      border-radius: 14px;
+      background: #faf5ff;
+      border: 1.5px solid #ede9fe;
+      margin-bottom: 10px;
+      transition: background .18s;
+    }
+    .inv-item:hover { background: #f3e8ff; }
+    .inv-pulse-num {
+      width: 38px; height: 38px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), #a855f7);
+      color: white;
+      font-size: 0.9rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .inv-info { flex: 1; min-width: 0; }
+    .inv-date   { font-size: 0.72rem; color: #888; }
+    .inv-amount { font-size: 0.93rem; font-weight: 700; color: #222; }
+    .inv-sp500  { font-size: 0.68rem; color: #bbb; }
+    .inv-right  {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .inv-current { font-size: 0.95rem; font-weight: 700; color: #222; }
+    .return-badge {
+      font-size: 0.72rem;
+      padding: 2px 9px;
+      border-radius: 99px;
+      font-weight: 700;
+    }
+    .badge-pos { background: #dcfce7; color: #15803d; }
+    .badge-neg { background: #fee2e2; color: #b91c1c; }
+    .badge-neu { background: #f3f4f6; color: #6b7280; }
+    .inv-actions { display: flex; gap: 2px; }
+
+    /* ===== EMPTY STATE ===== */
+    .empty-state { text-align: center; padding: 32px 16px; color: #bbb; }
+    .empty-icon  { font-size: 2.8rem; margin-bottom: 10px; }
+    .empty-state p { font-size: 0.88rem; line-height: 1.6; }
+
+    /* ===== SETTINGS FLOATING BTN ===== */
+    .settings-btn {
+      position: fixed;
+      bottom: 22px;
+      left: 22px;
+      width: 46px; height: 46px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.13);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1.5px solid rgba(255,255,255,0.25);
+      color: white;
+      font-size: 1.25rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background .18s;
+      z-index: 50;
+    }
+    .settings-btn:hover { background: rgba(255,255,255,0.22); }
+
+    /* ===== MODALS ===== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.55);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: white;
+      border-radius: 22px;
+      padding: 26px 22px;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.28);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal h3 { font-size: 1.05rem; color: #333; margin-bottom: 18px; }
+    .modal-btns { display: flex; gap: 10px; margin-top: 18px; }
+
+    /* ===== EMOJI PICKER ===== */
+    .emoji-picker {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .emoji-opt {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      border: 2px solid #e5e7eb;
+      background: white;
+      font-size: 1.35rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .18s;
+    }
+    .emoji-opt:hover   { border-color: var(--primary-light); transform: scale(1.1); }
+    .emoji-opt.selected {
+      border-color: var(--primary);
+      background: #faf5ff;
+      transform: scale(1.12);
+    }
+
+    /* ===== SETUP OVERLAY ===== */
+    .setup-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: linear-gradient(135deg, var(--bg1), var(--bg2));
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .setup-overlay.open { display: flex; }
+    .setup-card {
+      background: white;
+      border-radius: 26px;
+      padding: 32px 24px;
+      width: 100%;
+      max-width: 380px;
+      max-height: 92vh;
+      overflow-y: auto;
+    }
+    .setup-icon { font-size: 3.2rem; text-align: center; margin-bottom: 12px; }
+    .setup-card h2 {
+      text-align: center;
+      font-size: 1.5rem;
+      color: var(--primary);
+      margin-bottom: 6px;
+    }
+    .setup-card > p {
+      text-align: center;
+      color: #777;
+      font-size: 0.88rem;
+      margin-bottom: 22px;
+    }
+
+    /* ===== FOOTER ===== */
+    .footer {
+      text-align: center;
+      color: rgba(255,255,255,0.35);
+      font-size: 0.72rem;
+      padding-top: 8px;
+    }
+
+    /* ===== CONFETTI ===== */
+    .confetti-piece {
+      position: fixed;
+      pointer-events: none;
+      z-index: 9999;
+      animation: confettiFall 3s ease-in forwards;
+    }
+    @keyframes confettiFall {
+      0%   { transform: translateY(-60px) rotate(0deg);   opacity: 1; }
+      100% { transform: translateY(105vh) rotate(720deg); opacity: 0; }
+    }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 380px) {
+      .header h1   { font-size: 1.45rem; }
+      .stat-value  { font-size: 1.1rem; }
+      .price-value { font-size: 1rem; }
+    }
   </style>
 </head>
 <body>
-<div class="container">
 
-  <div class="header">
-    <h1>🚀 מסע ההשקעות שלי</h1>
-    <p>עוקבת אחרי ההשקעות שלך במדד S&amp;P 500</p>
-  </div>
+  <!-- ===== MAIN APP ===== -->
+  <div id="app" class="container">
 
-  <div class="stats-grid">
-    <div class="stat-card"><div class="icon">💰</div><div class="label">סך הכסף שהושקע</div><div class="value" id="statInvested">₪0</div></div>
-    <div class="stat-card"><div class="icon">📈</div><div class="label">שווי נוכחי (₪)</div><div class="value" id="statCurrent">₪0</div></div>
-    <div class="stat-card"><div class="icon">💵</div><div class="label">שווי נוכחי ($)</div><div class="value" id="statCurrentUSD">$0</div></div>
-    <div class="stat-card"><div class="icon">✨</div><div class="label">רווח / הפסד</div><div class="value" id="statProfit">₪0</div></div>
-    <div class="stat-card"><div class="icon">📊</div><div class="label">תשואה כוללת</div><div class="value" id="statReturn">0%</div></div>
-  </div>
+    <!-- Header -->
+    <header class="header">
+      <span id="headerEmoji" class="child-emoji">⭐</span>
+      <h1 id="headerTitle">מסע ההשקעות</h1>
+      <p id="headerSubtitle">עוקב אחרי ההשקעות שלך במדד S&P 500</p>
+      <div id="beatsBadge" class="beats-badge">פעימה 0 • S&P 500</div>
+    </header>
 
-  <div class="price-bar">
-    <span class="label">מדד S&amp;P 500 כעת:</span>
-    <div class="price-right">
-      <span id="sp500Display">טוען...</span>
-      <span id="sp500Change" style="display:none"></span>
-      <button class="refresh-btn" id="refreshBtn" onclick="refreshPrice()" title="רענן מחיר">🔄</button>
+    <!-- S&P 500 + Exchange rate bar -->
+    <div class="price-bar">
+      <div class="price-left">
+        <div class="price-label">מדד S&P 500</div>
+        <div class="price-row">
+          <span id="sp500Val" class="price-value">טוען...</span>
+          <span id="sp500Change" class="price-change" style="display:none"></span>
+        </div>
+      </div>
+      <div class="price-right">
+        <div class="price-label">שער דולר</div>
+        <span id="ilsVal" class="price-value">טוען...</span>
+      </div>
+      <button id="refreshBtn" class="refresh-btn" onclick="refreshPrice()">🔄</button>
+    </div>
+
+    <!-- API warning -->
+    <div id="apiAlert" class="alert alert-warn" style="display:none">
+      ⚠️ לא ניתן לטעון מחיר אוטומטית. הכניסי ידנית לפי
+      <a href="https://finance.yahoo.com/quote/%5EGSPC/" target="_blank" rel="noopener">Yahoo Finance</a>.
+    </div>
+
+    <!-- Stats grid (2x2) -->
+    <div class="stats-grid">
+      <div class="stat-card accent-blue">
+        <span class="stat-icon">🐷</span>
+        <div class="stat-label">שווי נוכחי</div>
+        <div class="stat-value" id="statCurrent">—</div>
+      </div>
+      <div class="stat-card accent-purple">
+        <span class="stat-icon">💰</span>
+        <div class="stat-label">סה״כ הושקע</div>
+        <div class="stat-value" id="statInvested">₪0</div>
+      </div>
+      <div class="stat-card" id="returnCard">
+        <span class="stat-icon">📈</span>
+        <div class="stat-label">תשואה כוללת</div>
+        <div class="stat-value" id="statReturn">—</div>
+      </div>
+      <div class="stat-card" id="profitCard">
+        <span class="stat-icon">✨</span>
+        <div class="stat-label">רווח / הפסד</div>
+        <div class="stat-value" id="statProfit">—</div>
+      </div>
+    </div>
+
+    <!-- Savings goal -->
+    <div class="card goal-card">
+      <div class="goal-header">
+        <div>
+          <div class="goal-title" id="goalTitle">🎯 יעד חיסכון</div>
+          <div class="goal-amounts" id="goalAmounts"></div>
+        </div>
+        <button class="icon-btn" onclick="openGoalModal()" title="ערוך יעד">✏️</button>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progressFill" style="width:0%"></div>
+      </div>
+      <div class="progress-labels">
+        <span class="progress-pct" id="progressPct">0%</span>
+        <span id="progressRemain" class="progress-remain"></span>
+      </div>
+    </div>
+
+    <!-- Chart -->
+    <div class="card" id="chartSection" style="display:none">
+      <div class="card-title">📈 גרף ביצועים</div>
+      <div class="chart-filters" id="chartFilters">
+        <button class="filter-btn" data-range="3M">3M</button>
+        <button class="filter-btn" data-range="6M">6M</button>
+        <button class="filter-btn" data-range="1Y">1Y</button>
+        <button class="filter-btn" data-range="2Y">2Y</button>
+        <button class="filter-btn active" data-range="ALL">הכל</button>
+      </div>
+      <canvas id="growthChart" height="200"></canvas>
+    </div>
+
+    <!-- Educational dictionary -->
+    <div class="card edu-card-wrapper">
+      <div class="card-title edu-toggle" onclick="toggleEdu()">
+        <span>📚 מילון ההשקעות שלי</span>
+        <span id="eduArrow">▼</span>
+      </div>
+      <div id="eduContent" style="display:none">
+
+        <div class="edu-item">
+          <div class="edu-item-header" onclick="toggleEduItem(this)">
+            <span class="edu-item-title">💡 מהי השקעה?</span>
+            <span class="edu-item-arrow">+</span>
+          </div>
+          <div class="edu-item-body">
+            השקעה היא כשאת נותנת את הכסף שלך לעבוד בשבילך! במקום שהכסף ישב בבית ולא יעשה כלום, הוא הולך לחברות גדולות שמייצרות מוצרים שאנשים אוהבים. עם הזמן, הכסף גדל ואת מרוויחה יותר ממה שנתת! 🚀
+          </div>
+        </div>
+
+        <div class="edu-item">
+          <div class="edu-item-header" onclick="toggleEduItem(this)">
+            <span class="edu-item-title">🌎 מה זה S&P 500?</span>
+            <span class="edu-item-arrow">+</span>
+          </div>
+          <div class="edu-item-body">
+            S&P 500 זה כמו "סל" שמכיל את <strong>500 החברות הגדולות ביותר באמריקה</strong> – כמו Apple, Google, ו-Amazon. כשאת משקיעה בו, את בעצם קונה חתיכה קטנה מכולן! זה הרבה יותר בטוח מלקנות מניה אחת. 📱💻🚗
+          </div>
+        </div>
+
+        <div class="edu-item">
+          <div class="edu-item-header" onclick="toggleEduItem(this)">
+            <span class="edu-item-title">💵 מהו רווח?</span>
+            <span class="edu-item-arrow">+</span>
+          </div>
+          <div class="edu-item-body">
+            רווח הוא הכסף הנוסף שאת מרוויחה! אם השקעת <strong>₪100</strong> והיום הם שווים <strong>₪115</strong>, אז הרווח שלך הוא <strong>₪15</strong>. הכסף עבד בשבילך ויצר עוד כסף בלי שעשית כלום! 💪
+          </div>
+        </div>
+
+        <div class="edu-item">
+          <div class="edu-item-header" onclick="toggleEduItem(this)">
+            <span class="edu-item-title">📊 מהי תשואה?</span>
+            <span class="edu-item-arrow">+</span>
+          </div>
+          <div class="edu-item-body">
+            תשואה היא <strong>כמה אחוז גדל הכסף שלך</strong>. אם השקעת ₪100 ועכשיו יש לך ₪110, התשואה היא 10%. המדד S&P 500 עלה בממוצע כ-<strong>10% בשנה</strong> לאורך ההיסטוריה — ממתינים ומרוויחים! ⏰
+          </div>
+        </div>
+
+        <div class="edu-item">
+          <div class="edu-item-header" onclick="toggleEduItem(this)">
+            <span class="edu-item-title">✨ מהי ריבית דריבית?</span>
+            <span class="edu-item-arrow">+</span>
+          </div>
+          <div class="edu-item-body">
+            זה הקסם הגדול של ההשקעות! הרווחים שלך גם מרוויחים! אם השקעת ₪100 ועשית 10%, יש לך ₪110. בשנה הבאה ה-10% מחושבים על <strong>₪110</strong> — לא רק על ₪100. ככל שממתינים יותר, הכסף גדל מהר יותר! 🌳
+          </div>
+        </div>
+
+        <div class="edu-item">
+          <div class="edu-item-header" onclick="toggleEduItem(this)">
+            <span class="edu-item-title">⚡ מה זה פעימת השקעה?</span>
+            <span class="edu-item-arrow">+</span>
+          </div>
+          <div class="edu-item-body">
+            כל פעם שאת מביאה כסף להשקיע, זו "<strong>פעימה</strong>"! כמו פעימת לב 💓 — כל פעימה מחזקת את תיק ההשקעות שלך. השקעה בצעדים קטנים ורגולריים נקראת <strong>השקעה תקופתית</strong> וזו אחת האסטרטגיות הטובות ביותר!
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Add investment -->
+    <div class="card">
+      <div class="card-title">⚡ הוסיפי פעימת השקעה</div>
+      <div class="form-group">
+        <label>📅 תאריך הפעימה</label>
+        <input type="date" id="fDate" />
+      </div>
+      <div class="form-group">
+        <label>💰 סכום (₪)</label>
+        <input type="number" id="fAmount" placeholder="לדוגמה: 50, 100, 200..." min="1" step="any" inputmode="decimal" />
+      </div>
+      <div class="form-group" id="manualGroup" style="display:none">
+        <label>📊 מחיר S&P 500 ידני</label>
+        <input type="number" id="fManual" placeholder="לדוגמה: 5500" step="0.01" min="1" />
+      </div>
+      <button class="btn-primary" id="addBtn" onclick="addInvestment()">⚡ הוסיפי פעימה!</button>
+    </div>
+
+    <!-- Investments list -->
+    <div class="card">
+      <div class="card-title">📋 כל הפעימות שלי</div>
+      <div id="investmentsList">
+        <div class="empty-state">
+          <div class="empty-icon">🌱</div>
+          <p>עוד אין פעימות.<br>הוסיפי את הפעימה הראשונה!</p>
+        </div>
+      </div>
+    </div>
+
+    <footer class="footer" id="lastUpdated">מסע ההשקעות ✨</footer>
+
+  </div><!-- /app -->
+
+  <!-- Settings floating button -->
+  <button class="settings-btn" onclick="openSettingsModal()" title="הגדרות">⚙️</button>
+
+  <!-- ===== MODALS ===== -->
+
+  <!-- Edit investment -->
+  <div class="modal-overlay" id="editModal">
+    <div class="modal">
+      <h3>✏️ עריכת פעימה</h3>
+      <input type="hidden" id="editId" />
+      <div class="form-group">
+        <label>📅 תאריך</label>
+        <input type="date" id="editDate" />
+      </div>
+      <div class="form-group">
+        <label>💰 סכום (₪)</label>
+        <input type="number" id="editAmount" min="1" step="any" />
+      </div>
+      <div class="form-group">
+        <label>📊 מחיר S&P 500 בתאריך הקנייה</label>
+        <input type="number" id="editSP500" min="1" step="0.01" />
+        <small class="field-hint">שינוי תאריך יטען מחיר חדש אוטומטית</small>
+      </div>
+      <div class="modal-btns">
+        <button class="btn-secondary" onclick="closeModal('editModal')">ביטול</button>
+        <button class="btn-save" id="editSaveBtn" onclick="saveEdit()">💾 שמור</button>
+      </div>
     </div>
   </div>
-  <div class="price-bar" style="margin-top:-2px; margin-bottom:22px;">
-    <span class="label">שער דולר (בנק ישראל):</span>
-    <span id="ilsDisplay" style="font-size:1.05rem;font-weight:700;color:#222;">טוען...</span>
-  </div>
 
-  <div id="apiAlert" class="alert alert-warning" style="display:none">
-    ⚠️ לא ניתן לטעון את מחיר המדד אוטומטית. הכניסי את מחיר S&amp;P 500 ידנית לפי
-    <a href="https://finance.yahoo.com/quote/%5EGSPC/" target="_blank" rel="noopener">Yahoo Finance</a>.
-  </div>
-
-  <div class="card" id="chartSection" style="display:none">
-    <h2>📈 גרף הצמיחה שלי</h2>
-    <canvas id="growthChart" height="200"></canvas>
-  </div>
-
-  <div class="card">
-    <h2>➕ הוסיפי השקעה חדשה</h2>
-    <div class="form-row">
-      <div class="form-group"><label>📅 תאריך</label><input type="date" id="fDate" /></div>
-      <div class="form-group"><label>💵 סכום (₪)</label><input type="number" id="fAmount" placeholder="50 – 500" min="1" max="10000" /></div>
-      <div class="form-group hidden" id="manualGroup"><label>📊 מחיר S&amp;P 500</label><input type="number" id="fManual" placeholder="לדוגמה: 5200" step="0.01" min="1" /></div>
-    </div>
-    <button class="btn-primary" id="addBtn" onclick="addInvestment()">✨ הוסיפי השקעה!</button>
-  </div>
-
-  <div class="card">
-    <h2>📋 כל ההשקעות שלי</h2>
-    <div id="investmentsList">
-      <div class="empty-state"><div class="big-icon">🌱</div><p>עדיין אין השקעות.<br>הוסיפי את ההשקעה הראשונה שלך!</p></div>
+  <!-- Goal modal -->
+  <div class="modal-overlay" id="goalModal">
+    <div class="modal">
+      <h3>🎯 עריכת יעד חיסכון</h3>
+      <div class="form-group">
+        <label>🏷️ שם היעד</label>
+        <input type="text" id="goalNameInput" placeholder="אייפון, אופניים, טיול..." />
+      </div>
+      <div class="form-group">
+        <label>💰 מחיר היעד (₪)</label>
+        <input type="number" id="goalAmountInput" min="1" placeholder="1000" />
+      </div>
+      <div class="form-group">
+        <label>🎨 אמוג'י ליעד</label>
+        <input type="text" id="goalEmojiInput" placeholder="📱" maxlength="2" class="emoji-input" />
+      </div>
+      <div class="modal-btns">
+        <button class="btn-secondary" onclick="closeModal('goalModal')">ביטול</button>
+        <button class="btn-save" onclick="saveGoalModal()">💾 שמור</button>
+      </div>
     </div>
   </div>
 
-  <div class="footer" id="lastUpdated"></div>
-</div>
-
-<div class="modal-overlay" id="editModal">
-  <div class="modal">
-    <h3>✏️ ערוך השקעה</h3>
-    <input type="hidden" id="editId" />
-    <div class="form-group">
-      <label style="font-size:0.82rem;color:#555;font-weight:600;">📅 תאריך</label>
-      <input type="date" id="editDate" style="width:100%;padding:10px 14px;border:2px solid #e5e7eb;border-radius:12px;font-size:1rem;text-align:right;font-family:inherit;" />
-    </div>
-    <div class="form-group">
-      <label style="font-size:0.82rem;color:#555;font-weight:600;">💵 סכום (₪)</label>
-      <input type="number" id="editAmount" min="1" style="width:100%;padding:10px 14px;border:2px solid #e5e7eb;border-radius:12px;font-size:1rem;text-align:right;font-family:inherit;" />
-    </div>
-    <div class="form-group">
-      <label style="font-size:0.82rem;color:#555;font-weight:600;">📊 מחיר S&amp;P 500 בתאריך הקנייה</label>
-      <input type="number" id="editSP500" min="1" step="0.01" style="width:100%;padding:10px 14px;border:2px solid #e5e7eb;border-radius:12px;font-size:1rem;text-align:right;font-family:inherit;" />
-    </div>
-    <div class="modal-btns">
-      <button class="btn-secondary" onclick="closeEdit()">ביטול</button>
-      <button class="btn-save" onclick="saveEdit()">💾 שמור שינויים</button>
+  <!-- Settings modal -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal">
+      <h3>⚙️ הגדרות</h3>
+      <div class="form-group">
+        <label>👧 שם הילד/ה</label>
+        <input type="text" id="settingsNameInput" placeholder="יובלי" />
+      </div>
+      <div class="form-group">
+        <label>🌟 אמוג'י</label>
+        <div class="emoji-picker" id="settingsEmojiPicker">
+          <button class="emoji-opt" data-e="⭐">⭐</button>
+          <button class="emoji-opt" data-e="🌟">🌟</button>
+          <button class="emoji-opt" data-e="💫">💫</button>
+          <button class="emoji-opt" data-e="🦋">🦋</button>
+          <button class="emoji-opt" data-e="🌈">🌈</button>
+          <button class="emoji-opt" data-e="🚀">🚀</button>
+          <button class="emoji-opt" data-e="🦄">🦄</button>
+          <button class="emoji-opt" data-e="🐼">🐼</button>
+          <button class="emoji-opt" data-e="🦊">🦊</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <button class="btn-danger-soft" onclick="confirmClearData()">🗑️ מחיקת כל הנתונים</button>
+      </div>
+      <div class="modal-btns">
+        <button class="btn-secondary" onclick="closeModal('settingsModal')">ביטול</button>
+        <button class="btn-save" onclick="saveSettingsModal()">💾 שמור</button>
+      </div>
     </div>
   </div>
-</div>
+
+  <!-- First-time setup overlay -->
+  <div class="setup-overlay" id="setupOverlay">
+    <div class="setup-card">
+      <div class="setup-icon">🚀</div>
+      <h2>ברוכה הבאה!</h2>
+      <p>בואי נגדיר את מסע ההשקעות שלך</p>
+      <div class="form-group">
+        <label>👧 מה השם שלך?</label>
+        <input type="text" id="setupName" placeholder="יובלי" />
+      </div>
+      <div class="form-group">
+        <label>🌟 בחרי אמוג'י</label>
+        <div class="emoji-picker" id="setupEmojiPicker">
+          <button class="emoji-opt selected" data-e="⭐">⭐</button>
+          <button class="emoji-opt" data-e="🌟">🌟</button>
+          <button class="emoji-opt" data-e="💫">💫</button>
+          <button class="emoji-opt" data-e="🦋">🦋</button>
+          <button class="emoji-opt" data-e="🌈">🌈</button>
+          <button class="emoji-opt" data-e="🚀">🚀</button>
+          <button class="emoji-opt" data-e="🦄">🦄</button>
+          <button class="emoji-opt" data-e="🐼">🐼</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>🎯 מה היעד הראשון שלך?</label>
+        <input type="text" id="setupGoalName" placeholder="אייפון, אופניים, טיול..." />
+      </div>
+      <div class="form-group">
+        <label>💰 כמה עולה היעד? (₪)</label>
+        <input type="number" id="setupGoalAmount" placeholder="1000" min="1" />
+      </div>
+      <button class="btn-primary" onclick="finishSetup()">✨ בואי נתחיל!</button>
+    </div>
+  </div>
+
 
 <script>
-let investments     = JSON.parse(localStorage.getItem('sp500_investments') || '[]');
-let currentPrice    = null;
-let currentExchRate = null;
-let apiFailed       = false;
-let growthChart     = null;
+// ── MULTI-CHILD STORAGE ──────────────────────────────────────────────────────
+const childKey   = new URLSearchParams(location.search).get('child') || 'default';
+const KEY_INV    = `investments_${childKey}`;
+const KEY_SET    = `settings_${childKey}`;
+const KEY_GOAL   = `goal_${childKey}`;
 
+// ── STATE ────────────────────────────────────────────────────────────────────
+let investments  = JSON.parse(localStorage.getItem(KEY_INV)  || '[]');
+let settings     = JSON.parse(localStorage.getItem(KEY_SET)  || 'null');
+let goal         = JSON.parse(localStorage.getItem(KEY_GOAL) || 'null');
+let currentPrice = null;
+let exchRate     = null;
+let chartRange   = 'ALL';
+let growthChart  = null;
+
+// ── FORMAT HELPERS ───────────────────────────────────────────────────────────
 const fmt    = n => '₪' + Number(n).toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtNum = n => Number(n).toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtNum = n =>       Number(n).toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const todayStr = () => new Date().toISOString().split('T')[0];
 
-function fmtDate(str) {
-  return new Date(str + 'T12:00:00').toLocaleDateString('he-IL', { year: 'numeric', month: 'long', day: 'numeric' });
+function fmtDate(s) {
+  return new Date(s + 'T12:00:00').toLocaleDateString('he-IL', { year:'numeric', month:'long', day:'numeric' });
 }
-function today() { return new Date().toISOString().split('T')[0]; }
-function save()  { localStorage.setItem('sp500_investments', JSON.stringify(investments)); }
 
+// ── PERSIST ──────────────────────────────────────────────────────────────────
+function saveInv()  { localStorage.setItem(KEY_INV,  JSON.stringify(investments)); }
+function saveSett() { localStorage.setItem(KEY_SET,  JSON.stringify(settings));    }
+function saveGoalS(){ localStorage.setItem(KEY_GOAL, JSON.stringify(goal));        }
+
+// ── API: CURRENT S&P 500 ─────────────────────────────────────────────────────
 async function fetchCurrentPrice() {
-  const SYMBOL  = '%5EGSPC';
-  const PROXY   = 'https://corsproxy.io/?';
-  const YAHOO_Q = `https://query1.finance.yahoo.com/v8/finance/chart/${SYMBOL}?range=1d&interval=1d`;
-  for (const attempt of [() => fetch(YAHOO_Q), () => fetch(PROXY + encodeURIComponent(YAHOO_Q))]) {
+  const SYM   = '%5EGSPC';
+  const PROXY = 'https://corsproxy.io/?';
+  const URL   = `https://query1.finance.yahoo.com/v8/finance/chart/${SYM}?range=1d&interval=1d`;
+  for (const fn of [() => fetch(URL), () => fetch(PROXY + encodeURIComponent(URL))]) {
     try {
-      const r = await attempt(); if (!r.ok) continue;
+      const r = await fn(); if (!r.ok) continue;
       const d = await r.json();
-      const meta = d?.chart?.result?.[0]?.meta;
-      if (meta?.regularMarketPrice) return { price: meta.regularMarketPrice, previousClose: meta.chartPreviousClose || meta.previousClose || null };
-    } catch (_) {}
+      const m = d?.chart?.result?.[0]?.meta;
+      if (m?.regularMarketPrice) return { price: m.regularMarketPrice, prev: m.chartPreviousClose || m.previousClose || null };
+    } catch(_) {}
   }
   return null;
 }
 
+// ── API: HISTORICAL S&P 500 ──────────────────────────────────────────────────
 async function fetchHistoricalPrice(dateStr) {
-  const PROXY = 'https://corsproxy.io/?', SYMBOL = '%5EGSPC';
-  const d = new Date(dateStr + 'T12:00:00');
-  const p1 = Math.floor(d.getTime() / 1000) - 86400, p2 = Math.floor(d.getTime() / 1000) + 86400 * 4;
-  const YAHOO_H = `https://query1.finance.yahoo.com/v8/finance/chart/${SYMBOL}?period1=${p1}&period2=${p2}&interval=1d`;
-  for (const attempt of [() => fetch(YAHOO_H), () => fetch(PROXY + encodeURIComponent(YAHOO_H))]) {
+  const SYM   = '%5EGSPC';
+  const PROXY = 'https://corsproxy.io/?';
+  const d  = new Date(dateStr + 'T12:00:00');
+  const p1 = Math.floor(d.getTime() / 1000) - 86400;
+  const p2 = Math.floor(d.getTime() / 1000) + 86400 * 5;
+  const URL = `https://query1.finance.yahoo.com/v8/finance/chart/${SYM}?period1=${p1}&period2=${p2}&interval=1d`;
+  for (const fn of [() => fetch(URL), () => fetch(PROXY + encodeURIComponent(URL))]) {
     try {
-      const r = await attempt(); if (!r.ok) continue;
-      const data = await r.json();
+      const r = await fn(); if (!r.ok) continue;
+      const data   = await r.json();
       const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
-      if (closes?.length) { const valid = closes.find(p => p !== null && p > 0); if (valid) return valid; }
-    } catch (_) {}
+      if (closes?.length) { const v = closes.find(p => p != null && p > 0); if (v) return v; }
+    } catch(_) {}
   }
   return null;
 }
 
+// ── API: EXCHANGE RATE ───────────────────────────────────────────────────────
 async function fetchExchangeRate() {
-  const BOI_URL = 'https://edge.boi.gov.il/FusionEdgeServer/sdmx/v2/data/dataflow/BOI.STATISTICS/EXR/1.0/RER_USD_ILS--ILUDAH?lastNObservations=1&format=sdmx-json';
-  const PROXY   = 'https://corsproxy.io/?';
-  for (const attempt of [() => fetch(BOI_URL), () => fetch(PROXY + encodeURIComponent(BOI_URL))]) {
+  const URL   = 'https://edge.boi.gov.il/FusionEdgeServer/sdmx/v2/data/dataflow/BOI.STATISTICS/EXR/1.0/RER_USD_ILS--ILUDAH?lastNObservations=1&format=sdmx-json';
+  const PROXY = 'https://corsproxy.io/?';
+  for (const fn of [() => fetch(URL), () => fetch(PROXY + encodeURIComponent(URL))]) {
     try {
-      const r = await attempt(); if (!r.ok) continue;
-      const d = await r.json();
+      const r = await fn(); if (!r.ok) continue;
+      const d   = await r.json();
       const obs = d?.data?.dataSets?.[0]?.series?.['0:0:0:0']?.observations;
       if (obs) {
         const keys = Object.keys(obs).sort((a,b) => +b - +a);
         const rate = obs[keys[0]]?.[0];
         if (rate && rate > 0) return rate;
       }
-    } catch (_) {}
+    } catch(_) {}
   }
   return null;
 }
 
+// ── INIT ─────────────────────────────────────────────────────────────────────
 async function initPrice() {
   spinning(true);
-  const [result, rate] = await Promise.all([fetchCurrentPrice(), fetchExchangeRate()]);
+  const [res, rate] = await Promise.all([fetchCurrentPrice(), fetchExchangeRate()]);
   spinning(false);
-  if (result) {
-    currentPrice = result.price; apiFailed = false;
-    showPrice(result.price, result.previousClose);
-    document.getElementById('apiAlert').style.display = 'none';
-    document.getElementById('manualGroup').classList.add('hidden');
+
+  if (res) {
+    currentPrice = res.price;
+    showPriceBar(res.price, res.prev);
+    document.getElementById('apiAlert').style.display    = 'none';
+    document.getElementById('manualGroup').style.display = 'none';
   } else {
-    apiFailed = true;
-    document.getElementById('sp500Display').textContent = 'לא זמין';
-    document.getElementById('apiAlert').style.display   = 'block';
-    document.getElementById('manualGroup').classList.remove('hidden');
+    document.getElementById('sp500Val').textContent      = 'לא זמין';
+    document.getElementById('apiAlert').style.display    = 'block';
+    document.getElementById('manualGroup').style.display = 'block';
   }
+
   if (rate) {
-    currentExchRate = rate;
-    document.getElementById('ilsDisplay').textContent = '1$ = ₪' + rate.toFixed(3) + ' (שער יציג)';
+    exchRate = rate;
+    document.getElementById('ilsVal').textContent = '₪' + rate.toFixed(3);
   } else {
-    document.getElementById('ilsDisplay').textContent = 'לא זמין';
+    document.getElementById('ilsVal').textContent = 'לא זמין';
   }
+
   updateUI();
 }
 
 async function refreshPrice() {
   spinning(true);
-  const [result, rate] = await Promise.all([fetchCurrentPrice(), fetchExchangeRate()]);
+  const [res, rate] = await Promise.all([fetchCurrentPrice(), fetchExchangeRate()]);
   spinning(false);
-  if (result) {
-    currentPrice = result.price; apiFailed = false;
-    showPrice(result.price, result.previousClose);
-    document.getElementById('apiAlert').style.display = 'none';
-    document.getElementById('manualGroup').classList.add('hidden');
+  if (res) {
+    currentPrice = res.price;
+    showPriceBar(res.price, res.prev);
+    document.getElementById('apiAlert').style.display    = 'none';
+    document.getElementById('manualGroup').style.display = 'none';
   }
   if (rate) {
-    currentExchRate = rate;
-    document.getElementById('ilsDisplay').textContent = '1$ = ₪' + rate.toFixed(3) + ' (שער יציג)';
+    exchRate = rate;
+    document.getElementById('ilsVal').textContent = '₪' + rate.toFixed(3);
   }
   updateUI();
 }
 
-function showPrice(price, prevClose) {
-  document.getElementById('sp500Display').textContent = fmtNum(price) + ' $';
-  document.getElementById('lastUpdated').textContent  = 'עודכן: ' + new Date().toLocaleTimeString('he-IL');
-  const changeEl = document.getElementById('sp500Change');
-  if (prevClose && prevClose > 0) {
-    const chg = price - prevClose, chgPct = (chg / prevClose) * 100, sign = chg >= 0 ? '+' : '';
-    changeEl.textContent   = `${sign}${fmtNum(chg)} (${sign}${chgPct.toFixed(2)}%)`;
-    changeEl.className     = 'return-badge ' + (chg >= 0 ? 'positive' : 'negative');
-    changeEl.style.display = 'inline';
+function showPriceBar(price, prev) {
+  document.getElementById('sp500Val').textContent = fmtNum(price) + ' $';
+  document.getElementById('lastUpdated').textContent = 'עודכן: ' + new Date().toLocaleTimeString('he-IL');
+  const chgEl = document.getElementById('sp500Change');
+  if (prev && prev > 0) {
+    const chg = price - prev, pct = (chg / prev) * 100, sign = chg >= 0 ? '+' : '';
+    chgEl.textContent = `${sign}${pct.toFixed(2)}%`;
+    chgEl.className   = 'price-change ' + (chg >= 0 ? 'up' : 'down');
+    chgEl.style.display = 'inline';
   }
 }
 
 function spinning(on) { document.getElementById('refreshBtn').classList.toggle('spinning', on); }
 
+// ── CALCULATION ──────────────────────────────────────────────────────────────
+function calcCurrent(inv) {
+  if (!currentPrice || !inv.sp500Price) return null;
+  return inv.amountNIS * (currentPrice / inv.sp500Price);
+}
+
+// ── UPDATE ALL UI ─────────────────────────────────────────────────────────────
+function updateUI() {
+  applySettings();
+
+  const totalInvested = investments.reduce((s, i) => s + i.amountNIS, 0);
+  document.getElementById('statInvested').textContent = fmt(totalInvested);
+  document.getElementById('beatsBadge').textContent   = `פעימה ${investments.length} • S&P 500`;
+
+  if (currentPrice && investments.length > 0) {
+    let totalCurrent = 0;
+    investments.forEach(inv => { const v = calcCurrent(inv); if (v !== null) totalCurrent += v; });
+
+    const profit = totalCurrent - totalInvested;
+    const pct    = totalInvested > 0 ? (profit / totalInvested) * 100 : 0;
+    const isPos  = profit >= 0;
+
+    document.getElementById('statCurrent').textContent = fmt(totalCurrent);
+
+    const retCard = document.getElementById('returnCard');
+    retCard.className = 'stat-card ' + (isPos ? 'accent-green' : 'accent-red');
+    const retEl = document.getElementById('statReturn');
+    retEl.textContent = (isPos ? '+' : '') + pct.toFixed(2) + '%';
+    retEl.className   = 'stat-value ' + (isPos ? 'positive' : 'negative');
+
+    const profCard = document.getElementById('profitCard');
+    profCard.className = 'stat-card ' + (isPos ? 'accent-green' : 'accent-red');
+    const profEl = document.getElementById('statProfit');
+    profEl.textContent = (isPos ? '+' : '') + fmt(profit);
+    profEl.className   = 'stat-value ' + (isPos ? 'positive' : 'negative');
+
+    updateGoalUI(totalCurrent);
+  } else {
+    ['statCurrent','statReturn','statProfit'].forEach(id => {
+      document.getElementById(id).textContent = '—';
+      document.getElementById(id).className   = 'stat-value';
+    });
+    document.getElementById('returnCard').className = 'stat-card accent-purple';
+    document.getElementById('profitCard').className = 'stat-card accent-blue';
+    updateGoalUI(0);
+  }
+
+  renderList();
+  renderChart();
+}
+
+function applySettings() {
+  if (!settings) return;
+  const name = settings.name;
+  const emoji = settings.emoji || '⭐';
+  document.getElementById('headerEmoji').textContent    = emoji;
+  document.getElementById('headerTitle').textContent    = `מסע ההשקעות של ${name}`;
+  document.getElementById('headerSubtitle').textContent = `עוקב אחרי ההשקעות של ${name} במדד S&P 500`;
+  document.title = `מסע ההשקעות של ${name} ✨`;
+}
+
+function updateGoalUI(currentVal) {
+  if (!goal) return;
+  const pct = Math.min(100, (currentVal / goal.amount) * 100);
+  const rem = Math.max(0, goal.amount - currentVal);
+  document.getElementById('goalTitle').textContent    = `${goal.emoji || '🎯'} יעד: ${goal.name}`;
+  document.getElementById('goalAmounts').textContent  = `${fmt(currentVal)} מתוך ${fmt(goal.amount)}`;
+  document.getElementById('progressFill').style.width = pct.toFixed(1) + '%';
+  document.getElementById('progressPct').textContent  = pct.toFixed(1) + '%';
+  document.getElementById('progressRemain').textContent = pct >= 100
+    ? '🎉 הגעת ליעד!'
+    : `נשאר ${fmt(rem)}`;
+}
+
+// ── RENDER LIST ───────────────────────────────────────────────────────────────
+function renderList() {
+  const el = document.getElementById('investmentsList');
+  if (!investments.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🌱</div><p>עוד אין פעימות.<br>הוסיפי את הפעימה הראשונה!</p></div>`;
+    return;
+  }
+  const sorted = [...investments].sort((a,b) => b.date.localeCompare(a.date));
+  el.innerHTML = sorted.map((inv, idx) => {
+    const cur   = calcCurrent(inv);
+    const prf   = cur !== null ? cur - inv.amountNIS : null;
+    const pct   = prf !== null ? (prf / inv.amountNIS) * 100 : null;
+    const isPos = pct !== null && pct >= 0;
+    const badgeCls = pct === null ? 'badge-neu' : isPos ? 'badge-pos' : 'badge-neg';
+    const badgeTxt = pct === null ? 'N/A' : (isPos ? '+' : '') + pct.toFixed(2) + '%';
+    const num   = sorted.length - idx;
+    return `
+      <div class="inv-item">
+        <div class="inv-pulse-num">${num}</div>
+        <div class="inv-info">
+          <div class="inv-date">📅 ${fmtDate(inv.date)}</div>
+          <div class="inv-amount">הושקע: ${fmt(inv.amountNIS)}</div>
+          <div class="inv-sp500">מדד בקנייה: $${fmtNum(inv.sp500Price)}</div>
+        </div>
+        <div class="inv-right">
+          <div class="inv-current">${cur !== null ? fmt(cur) : '—'}</div>
+          <span class="return-badge ${badgeCls}">${badgeTxt}</span>
+          <div class="inv-actions">
+            <button class="icon-btn" onclick="openEditModal('${inv.id}')" title="ערוך">✏️</button>
+            <button class="icon-btn del" onclick="deleteInv('${inv.id}')" title="מחק">🗑️</button>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── RENDER CHART ──────────────────────────────────────────────────────────────
+function setChartRange(range) {
+  chartRange = range;
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.range === range);
+  });
+  renderChart();
+}
+
+function getFilteredInvestments() {
+  if (chartRange === 'ALL') return [...investments];
+  const now    = new Date();
+  const cutoff = new Date(now);
+  if      (chartRange === '3M') cutoff.setMonth(cutoff.getMonth() - 3);
+  else if (chartRange === '6M') cutoff.setMonth(cutoff.getMonth() - 6);
+  else if (chartRange === '1Y') cutoff.setFullYear(cutoff.getFullYear() - 1);
+  else if (chartRange === '2Y') cutoff.setFullYear(cutoff.getFullYear() - 2);
+  const cut = cutoff.toISOString().split('T')[0];
+  return investments.filter(inv => inv.date >= cut);
+}
+
+function renderChart() {
+  const section = document.getElementById('chartSection');
+  if (!investments.length || !currentPrice) {
+    section.style.display = 'none';
+    if (growthChart) { growthChart.destroy(); growthChart = null; }
+    return;
+  }
+  section.style.display = 'block';
+
+  const filtered = getFilteredInvestments().sort((a,b) => a.date.localeCompare(b.date));
+  if (!filtered.length) return;
+
+  const labels = filtered.map(inv => fmtDate(inv.date));
+  let cumInv = 0, cumCur = 0;
+  const dataInv = [], dataCur = [];
+  filtered.forEach(inv => {
+    cumInv += inv.amountNIS;
+    const cur = calcCurrent(inv);
+    cumCur += cur !== null ? cur : inv.amountNIS;
+    dataInv.push(+cumInv.toFixed(2));
+    dataCur.push(+cumCur.toFixed(2));
+  });
+
+  const ctx = document.getElementById('growthChart').getContext('2d');
+  if (growthChart) growthChart.destroy();
+  growthChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets: [
+      { label:'הושקע',     data: dataInv, borderColor:'#94a3b8', backgroundColor:'rgba(148,163,184,0.08)', borderDash:[5,4], fill:true, tension:0.4, pointRadius:4, pointBackgroundColor:'#94a3b8' },
+      { label:'שווי נוכחי', data: dataCur, borderColor:'#7c3aed', backgroundColor:'rgba(124,58,237,0.1)',   fill:true, tension:0.4, pointRadius:4, pointBackgroundColor:'#7c3aed' },
+    ]},
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position:'top', labels:{ font:{ family:'Segoe UI', size:11 } } },
+        tooltip: { callbacks: { label: c => c.dataset.label + ': ' + fmt(c.raw) } }
+      },
+      scales: {
+        y: { ticks: { callback: v => '₪' + Number(v).toLocaleString('he-IL'), font:{size:10} }, grid:{ color:'rgba(0,0,0,0.05)' } },
+        x: { ticks: { font:{size:9}, maxRotation:30 }, grid:{ display:false } }
+      }
+    }
+  });
+}
+
+// ── ADD INVESTMENT ────────────────────────────────────────────────────────────
 async function addInvestment() {
   const dateVal   = document.getElementById('fDate').value;
   const amountVal = parseFloat(document.getElementById('fAmount').value);
-  const manualVal = parseFloat(document.getElementById('fManual').value);
-  if (!dateVal)                    { alert('אנא בחרי תאריך'); return; }
-  if (!amountVal || amountVal <= 0){ alert('אנא הכניסי סכום חיובי'); return; }
-  if (dateVal > today())           { alert('לא ניתן להשקיע בתאריך עתידי'); return; }
-  let sp500 = null;
-  const isToday = dateVal === today();
+  const manualVal = parseFloat(document.getElementById('fManual').value || '0');
+
+  if (!dateVal)                     { alert('בחרי תאריך'); return; }
+  if (!amountVal || amountVal <= 0) { alert('הכניסי סכום חיובי'); return; }
+  if (dateVal > todayStr())         { alert('לא ניתן לבחור תאריך עתידי'); return; }
+
   setAdding(true);
-  if (isToday && currentPrice) { sp500 = currentPrice; }
-  else if (isToday) { const r = await fetchCurrentPrice(); if (r) { currentPrice = r.price; sp500 = r.price; showPrice(r.price, r.previousClose); } }
-  else { sp500 = await fetchHistoricalPrice(dateVal); }
+  let sp500 = null;
+  const isToday = dateVal === todayStr();
+
+  if (isToday && currentPrice)       { sp500 = currentPrice; }
+  else if (isToday)                  { const r = await fetchCurrentPrice(); if (r) { currentPrice = r.price; sp500 = r.price; showPriceBar(r.price, r.prev); } }
+  else                               { sp500 = await fetchHistoricalPrice(dateVal); }
   setAdding(false);
+
   if (!sp500) {
     if (manualVal > 0) { sp500 = manualVal; }
     else {
-      apiFailed = true;
-      document.getElementById('apiAlert').style.display = 'block';
-      document.getElementById('manualGroup').classList.remove('hidden');
-      alert('לא ניתן לקבל את מחיר המדד אוטומטית. אנא הכניסי ידנית.');
+      document.getElementById('apiAlert').style.display    = 'block';
+      document.getElementById('manualGroup').style.display = 'block';
+      alert('לא ניתן לקבל מחיר אוטומטית. הכניסי ידנית.');
       return;
     }
   }
+
   investments.push({ id: Date.now().toString(), date: dateVal, amountNIS: amountVal, sp500Price: sp500 });
-  save();
+  saveInv();
   document.getElementById('fAmount').value = '';
   document.getElementById('fManual').value = '';
   celebrate();
@@ -316,154 +1254,199 @@ async function addInvestment() {
 
 function setAdding(on) {
   const btn = document.getElementById('addBtn');
-  btn.disabled = on; btn.textContent = on ? '⏳ מביאה מחיר...' : '✨ הוסיפי השקעה!';
+  btn.disabled    = on;
+  btn.textContent = on ? '⏳ מביא מחיר...' : '⚡ הוסיפי פעימה!';
 }
 
-function deleteInvestment(id) {
-  if (!confirm('למחוק השקעה זו?')) return;
-  investments = investments.filter(inv => inv.id !== id);
-  save(); updateUI();
+// ── DELETE ────────────────────────────────────────────────────────────────────
+function deleteInv(id) {
+  if (!confirm('למחוק פעימה זו?')) return;
+  investments = investments.filter(i => i.id !== id);
+  saveInv(); updateUI();
 }
 
-function calcCurrent(inv) {
-  if (!currentPrice) return null;
-  return inv.amountNIS * (currentPrice / inv.sp500Price);
-}
-
-function updateUI() {
-  const totalInvested = investments.reduce((s, inv) => s + inv.amountNIS, 0);
-  let totalCurrent = 0;
-  investments.forEach(inv => { const v = calcCurrent(inv); if (v !== null) totalCurrent += v; });
-  document.getElementById('statInvested').textContent = fmt(totalInvested);
-  if (currentPrice && investments.length > 0) {
-    const profit = totalCurrent - totalInvested;
-    const pct    = totalInvested > 0 ? (profit / totalInvested) * 100 : 0;
-    const sign   = profit >= 0 ? '+' : '', cls = profit >= 0 ? 'positive' : 'negative';
-    setVal('statCurrent', fmt(totalCurrent));
-    setVal('statProfit',  sign + fmt(profit), cls);
-    setVal('statReturn',  sign + pct.toFixed(2) + '%', cls);
-    if (currentExchRate) {
-      const usd = totalCurrent / currentExchRate;
-      setVal('statCurrentUSD', '$' + usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
-    } else { setVal('statCurrentUSD', 'N/A'); }
-  } else {
-    ['statCurrent','statProfit','statReturn','statCurrentUSD'].forEach(id => setVal(id, '—'));
-  }
-  renderList(); renderChart();
-}
-
-function setVal(id, text, cls = '') {
-  const el = document.getElementById(id);
-  el.textContent = text; el.className = 'value' + (cls ? ' ' + cls : '');
-}
-
-function renderList() {
-  const el = document.getElementById('investmentsList');
-  if (!investments.length) {
-    el.innerHTML = `<div class="empty-state"><div class="big-icon">🌱</div><p>עדיין אין השקעות.<br>הוסיפי את ההשקעה הראשונה שלך!</p></div>`;
-    return;
-  }
-  const sorted = [...investments].sort((a, b) => b.date.localeCompare(a.date));
-  el.innerHTML = sorted.map(inv => {
-    const cur  = calcCurrent(inv);
-    const prf  = cur !== null ? cur - inv.amountNIS : null;
-    const pct  = prf !== null ? (prf / inv.amountNIS) * 100 : null;
-    const sign = pct !== null && pct >= 0 ? '+' : '';
-    const cls  = pct === null ? 'neutral' : pct >= 0 ? 'positive' : 'negative';
-    const curUSD = (cur !== null && currentExchRate) ? '$' + (cur / currentExchRate).toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2}) : '';
-    return `
-      <div class="investment-item">
-        <div class="left-side">
-          <button class="delete-btn" onclick="deleteInvestment('${inv.id}')" title="מחק">🗑️</button>
-          <button class="edit-btn"   onclick="openEdit('${inv.id}')"         title="ערוך">✏️</button>
-          <div class="info">
-            <div class="inv-date">📅 ${fmtDate(inv.date)}</div>
-            <div class="inv-amount">הושקע: ${fmt(inv.amountNIS)}</div>
-            <div class="inv-sp500">מדד בקנייה: $${fmtNum(inv.sp500Price)}</div>
-          </div>
-        </div>
-        <div class="right-side">
-          <div class="current-val">${cur !== null ? fmt(cur) : '—'}</div>
-          ${curUSD ? `<div style="font-size:0.76rem;color:#888;">${curUSD}</div>` : ''}
-          <span class="return-badge ${cls}">${pct !== null ? sign + Math.abs(pct).toFixed(2) + '%' : 'N/A'}</span>
-        </div>
-      </div>`;
-  }).join('');
-}
-
-function renderChart() {
-  const section = document.getElementById('chartSection');
-  if (!investments.length || !currentPrice) { section.style.display = 'none'; if (growthChart) { growthChart.destroy(); growthChart = null; } return; }
-  section.style.display = 'block';
-  const sorted = [...investments].sort((a, b) => a.date.localeCompare(b.date));
-  const labels = sorted.map(inv => fmtDate(inv.date));
-  let cumInv = 0, cumCur = 0;
-  const dataInv = [], dataCur = [];
-  sorted.forEach(inv => {
-    cumInv += inv.amountNIS;
-    const cur = calcCurrent(inv); cumCur += cur !== null ? cur : inv.amountNIS;
-    dataInv.push(cumInv); dataCur.push(cumCur);
-  });
-  const ctx = document.getElementById('growthChart').getContext('2d');
-  if (growthChart) growthChart.destroy();
-  growthChart = new Chart(ctx, {
-    type: 'line',
-    data: { labels, datasets: [
-      { label: 'סכום שהושקע', data: dataInv, borderColor: '#94a3b8', backgroundColor: 'rgba(148,163,184,0.1)', borderDash: [6,4], fill: true, tension: 0.35, pointRadius: 5 },
-      { label: 'שווי נוכחי',  data: dataCur, borderColor: '#764ba2', backgroundColor: 'rgba(118,75,162,0.13)',   fill: true, tension: 0.35, pointRadius: 5 },
-    ]},
-    options: { responsive: true, plugins: { legend: { position: 'top' }, tooltip: { callbacks: { label: ctx => fmt(ctx.raw) } } }, scales: { y: { ticks: { callback: v => '₪' + v.toLocaleString('he-IL') } } } }
-  });
-}
-
-function celebrate() {
-  const colors = ['#667eea','#764ba2','#f59e0b','#10b981','#ef4444','#ec4899','#06b6d4'];
-  for (let i = 0; i < 35; i++) {
-    setTimeout(() => {
-      const el = document.createElement('div'); el.className = 'confetti';
-      const size = (Math.random() * 10 + 6) + 'px';
-      Object.assign(el.style, { left: Math.random() * 100 + 'vw', top: '-20px', width: size, height: size, background: colors[Math.floor(Math.random() * colors.length)], animationDuration: (Math.random() * 2 + 2) + 's', borderRadius: Math.random() > 0.5 ? '50%' : '2px' });
-      document.body.appendChild(el); setTimeout(() => el.remove(), 5000);
-    }, i * 60);
-  }
-}
-
-function openEdit(id) {
+// ── EDIT INVESTMENT ───────────────────────────────────────────────────────────
+function openEditModal(id) {
   const inv = investments.find(i => i.id === id); if (!inv) return;
   document.getElementById('editId').value     = id;
   document.getElementById('editDate').value   = inv.date;
   document.getElementById('editAmount').value = inv.amountNIS;
   document.getElementById('editSP500').value  = inv.sp500Price;
-  document.getElementById('editModal').classList.add('open');
+  openModal('editModal');
 }
-
-function closeEdit() { document.getElementById('editModal').classList.remove('open'); }
 
 async function saveEdit() {
   const id        = document.getElementById('editId').value;
   const dateVal   = document.getElementById('editDate').value;
   const amountVal = parseFloat(document.getElementById('editAmount').value);
   let   sp500Val  = parseFloat(document.getElementById('editSP500').value);
-  if (!dateVal)                    { alert('אנא בחרי תאריך'); return; }
-  if (!amountVal || amountVal <= 0){ alert('אנא הכניסי סכום חיובי'); return; }
-  if (dateVal > today())           { alert('לא ניתן להשקיע בתאריך עתידי'); return; }
+
+  if (!dateVal)                     { alert('בחרי תאריך'); return; }
+  if (!amountVal || amountVal <= 0) { alert('הכניסי סכום חיובי'); return; }
+  if (dateVal > todayStr())         { alert('לא ניתן לבחור תאריך עתידי'); return; }
+
   const inv = investments.find(i => i.id === id);
-  if (inv && dateVal !== inv.date && sp500Val === inv.sp500Price) {
-    const btn = document.querySelector('.btn-save');
-    btn.textContent = '⏳ מביא מחיר...'; btn.disabled = true;
-    const fetched = (dateVal === today() && currentPrice) ? currentPrice
-      : await (dateVal === today() ? fetchCurrentPrice().then(r => r?.price) : fetchHistoricalPrice(dateVal));
-    btn.textContent = '💾 שמור שינויים'; btn.disabled = false;
+  if (inv && dateVal !== inv.date) {
+    const saveBtn = document.getElementById('editSaveBtn');
+    saveBtn.textContent = '⏳...'; saveBtn.disabled = true;
+    const fetched = (dateVal === todayStr() && currentPrice)
+      ? currentPrice
+      : await (dateVal === todayStr() ? fetchCurrentPrice().then(r => r?.price) : fetchHistoricalPrice(dateVal));
+    saveBtn.textContent = '💾 שמור'; saveBtn.disabled = false;
     if (fetched) sp500Val = fetched;
   }
-  if (!sp500Val || sp500Val <= 0) { alert('אנא הכניסי מחיר S&P 500 תקין'); return; }
+
+  if (!sp500Val || sp500Val <= 0) { alert('מחיר S&P 500 לא תקין'); return; }
   const idx = investments.findIndex(i => i.id === id);
   investments[idx] = { ...investments[idx], date: dateVal, amountNIS: amountVal, sp500Price: sp500Val };
-  save(); closeEdit(); updateUI();
+  saveInv(); closeModal('editModal'); updateUI();
 }
 
-document.getElementById('editModal').addEventListener('click', function(e) { if (e.target === this) closeEdit(); });
-document.getElementById('fDate').value = today();
+// ── GOAL ──────────────────────────────────────────────────────────────────────
+function openGoalModal() {
+  document.getElementById('goalNameInput').value   = goal?.name   || '';
+  document.getElementById('goalAmountInput').value = goal?.amount || '';
+  document.getElementById('goalEmojiInput').value  = goal?.emoji  || '🎯';
+  openModal('goalModal');
+}
+
+function saveGoalModal() {
+  const name   = document.getElementById('goalNameInput').value.trim();
+  const amount = parseFloat(document.getElementById('goalAmountInput').value);
+  const emoji  = document.getElementById('goalEmojiInput').value.trim() || '🎯';
+  if (!name)                { alert('הכניסי שם ליעד'); return; }
+  if (!amount || amount<=0) { alert('הכניסי סכום תקין'); return; }
+  goal = { name, amount, emoji };
+  saveGoalS(); closeModal('goalModal'); updateUI();
+}
+
+// ── SETTINGS ──────────────────────────────────────────────────────────────────
+function openSettingsModal() {
+  document.getElementById('settingsNameInput').value = settings?.name || '';
+  const curEmoji = settings?.emoji || '⭐';
+  document.querySelectorAll('#settingsEmojiPicker .emoji-opt').forEach(btn => {
+    btn.classList.toggle('selected', btn.dataset.e === curEmoji);
+  });
+  openModal('settingsModal');
+}
+
+function saveSettingsModal() {
+  const name  = document.getElementById('settingsNameInput').value.trim();
+  const emoji = document.querySelector('#settingsEmojiPicker .emoji-opt.selected')?.dataset?.e || '⭐';
+  if (!name) { alert('הכניסי שם'); return; }
+  settings = { name, emoji };
+  saveSett(); closeModal('settingsModal'); updateUI();
+}
+
+function confirmClearData() {
+  if (!confirm('למחוק את כל הנתונים? פעולה זו לא ניתנת לביטול!')) return;
+  investments = []; saveInv(); updateUI();
+}
+
+// ── SETUP WIZARD ──────────────────────────────────────────────────────────────
+function finishSetup() {
+  const name      = document.getElementById('setupName').value.trim();
+  const goalName  = document.getElementById('setupGoalName').value.trim();
+  const goalAmt   = parseFloat(document.getElementById('setupGoalAmount').value);
+  const emoji     = document.querySelector('#setupEmojiPicker .emoji-opt.selected')?.dataset?.e || '⭐';
+
+  if (!name) { alert('הכניסי את שמך'); return; }
+  settings = { name, emoji };
+  saveSett();
+
+  if (goalName && goalAmt > 0) {
+    goal = { name: goalName, amount: goalAmt, emoji: '🎯' };
+    saveGoalS();
+  } else if (!goal) {
+    goal = { name: 'יעד ראשון', amount: 1000, emoji: '🎯' };
+    saveGoalS();
+  }
+
+  document.getElementById('setupOverlay').classList.remove('open');
+  updateUI();
+}
+
+// ── EMOJI PICKERS ─────────────────────────────────────────────────────────────
+function initEmojiPickers() {
+  document.querySelectorAll('.emoji-picker').forEach(picker => {
+    picker.querySelectorAll('.emoji-opt').forEach(btn => {
+      btn.addEventListener('click', () => {
+        picker.querySelectorAll('.emoji-opt').forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+      });
+    });
+  });
+}
+
+// ── CHART FILTER BUTTONS ──────────────────────────────────────────────────────
+function initChartFilters() {
+  document.querySelectorAll('.filter-btn').forEach(btn => {
+    btn.addEventListener('click', () => setChartRange(btn.dataset.range));
+  });
+}
+
+// ── MODALS ────────────────────────────────────────────────────────────────────
+function openModal(id)  { document.getElementById(id).classList.add('open');    }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.classList.remove('open'); });
+});
+
+// ── EDUCATIONAL ACCORDION ─────────────────────────────────────────────────────
+function toggleEdu() {
+  const content = document.getElementById('eduContent');
+  const arrow   = document.getElementById('eduArrow');
+  const open    = content.style.display === 'none';
+  content.style.display = open ? 'block' : 'none';
+  arrow.textContent     = open ? '▲' : '▼';
+}
+
+function toggleEduItem(header) {
+  const body  = header.nextElementSibling;
+  const arrow = header.querySelector('.edu-item-arrow');
+  const open  = body.classList.toggle('open');
+  arrow.textContent = open ? '−' : '+';
+}
+
+// ── CELEBRATE ─────────────────────────────────────────────────────────────────
+function celebrate() {
+  const colors = ['#7c3aed','#f59e0b','#10b981','#ef4444','#ec4899','#06b6d4','#a855f7'];
+  for (let i = 0; i < 45; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'confetti-piece';
+      const size = (Math.random() * 10 + 6) + 'px';
+      Object.assign(el.style, {
+        left:              Math.random() * 100 + 'vw',
+        top:               '-20px',
+        width:             size,
+        height:            size,
+        background:        colors[Math.floor(Math.random() * colors.length)],
+        animationDuration: (Math.random() * 2 + 2) + 's',
+        borderRadius:      Math.random() > 0.5 ? '50%' : '3px',
+      });
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 5000);
+    }, i * 55);
+  }
+}
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+document.getElementById('fDate').value = todayStr();
+initEmojiPickers();
+initChartFilters();
+
+if (!settings) {
+  document.getElementById('setupOverlay').classList.add('open');
+} else {
+  if (!goal) {
+    goal = { name: 'יעד ראשון', amount: 1000, emoji: '🎯' };
+    saveGoalS();
+  }
+  applySettings();
+}
+
 initPrice();
 </script>
 </body>
