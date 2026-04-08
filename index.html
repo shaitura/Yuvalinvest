@@ -179,6 +179,7 @@
     .accent-purple::after { background: var(--primary); }
     .accent-green::after  { background: var(--success); }
     .accent-red::after    { background: var(--danger); }
+    .accent-orange::after { background: #f97316; }
     .stat-icon  { font-size: 1.55rem; display: block; margin-bottom: 6px; }
     .stat-label { font-size: 0.71rem; color: #888; margin-bottom: 4px; }
     .stat-value { font-size: 1.25rem; font-weight: 800; color: #222; }
@@ -787,6 +788,16 @@
         </div>
         <div class="stat-value" id="statProfit">—</div>
       </div>
+      <div class="stat-card accent-orange" id="durationCard" style="grid-column:1/-1;flex-direction:row;align-items:center;gap:14px;justify-content:center;">
+        <span class="stat-icon" style="font-size:2rem;">🗓️</span>
+        <div style="text-align:center;">
+          <div class="stat-label">
+            משקיעה כבר
+            <button class="tip-btn" onclick="showTip(event,'כמה זמן עבר מאז הפעימה הראשונה שלך — כל יום שעובר הכסף עובד בשבילך! 🚀')">?</button>
+          </div>
+          <div class="stat-value" id="statDuration" style="font-size:1.3rem;">—</div>
+        </div>
+      </div>
     </div>
 
     <!-- Savings goal -->
@@ -1243,6 +1254,26 @@ function updateUI() {
   const totalInvested = investments.reduce((s, i) => s + i.amountNIS, 0);
   document.getElementById('statInvested').textContent = fmt(totalInvested);
   document.getElementById('beatsBadge').textContent   = `פעימה ${investments.length} • S&P 500`;
+
+  // Duration since first investment
+  if (investments.length > 0) {
+    const dates = investments.map(i => new Date(i.date)).filter(d => !isNaN(d));
+    if (dates.length > 0) {
+      const first = new Date(Math.min(...dates));
+      const today = new Date();
+      const totalDays = Math.floor((today - first) / 86400000);
+      const years  = Math.floor(totalDays / 365);
+      const months = Math.floor((totalDays % 365) / 30);
+      const days   = totalDays % 30;
+      let parts = [];
+      if (years  > 0) parts.push(years  === 1 ? 'שנה אחת'    : `${years} שנים`);
+      if (months > 0) parts.push(months === 1 ? 'חודש אחד'   : `${months} חודשים`);
+      if (days   > 0 || parts.length === 0) parts.push(days === 1 ? 'יום אחד' : `${days} ימים`);
+      document.getElementById('statDuration').textContent = parts.join(' ו‑');
+    }
+  } else {
+    document.getElementById('statDuration').textContent = '—';
+  }
 
   if (currentPrice && investments.length > 0) {
     let totalCurrent = 0;
