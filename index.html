@@ -1143,7 +1143,7 @@ function invalidateMarketData() { _marketP = null; _historyP = null; }
 async function fetchCurrentPrice() {
   try {
     const m = await getMarket();
-    if (m?.sp500?.price > 0) return { price: m.sp500.price, prev: m.sp500.prevClose || null, asOf: m.sp500.asOf || null };
+    if (m?.sp500?.price > 0) return { price: m.sp500.price, prev: m.sp500.prevClose || null, asOf: m.sp500.asOf || null, intraday: !!m.sp500.intraday };
   } catch (e) { console.warn('fetchCurrentPrice:', e.message); }
   return null;
 }
@@ -1180,7 +1180,7 @@ async function initPrice() {
 
   if (res) {
     currentPrice = res.price;
-    showPriceBar(res.price, res.prev, res.asOf);
+    showPriceBar(res.price, res.prev, res.asOf, res.intraday);
     document.getElementById('apiAlert').style.display    = 'none';
     document.getElementById('manualGroup').style.display = 'none';
   } else {
@@ -1206,7 +1206,7 @@ async function refreshPrice() {
   spinning(false);
   if (res) {
     currentPrice = res.price;
-    showPriceBar(res.price, res.prev, res.asOf);
+    showPriceBar(res.price, res.prev, res.asOf, res.intraday);
     document.getElementById('apiAlert').style.display    = 'none';
     document.getElementById('manualGroup').style.display = 'none';
   }
@@ -1217,11 +1217,11 @@ async function refreshPrice() {
   updateUI();
 }
 
-function showPriceBar(price, prev, asOf) {
+function showPriceBar(price, prev, asOf, intraday) {
   document.getElementById('sp500Val').textContent = fmtNum(price) + ' $';
   const asOfHe = asOf ? asOf.split('-').reverse().join('/') : null;
   document.getElementById('lastUpdated').textContent =
-    'מחיר סגירה' + (asOfHe ? ' מ-' + asOfHe : '') + ' • מתעדכן פעמיים ביום';
+    (intraday ? 'מחיר מהמסחר' : 'מחיר סגירה') + (asOfHe ? ' מ-' + asOfHe : '') + ' • מתעדכן פעמיים ביום';
   const chgEl = document.getElementById('sp500Change');
   if (prev && prev > 0) {
     const chg = price - prev, pct = (chg / prev) * 100, sign = chg >= 0 ? '+' : '';
@@ -1459,7 +1459,7 @@ async function addInvestment() {
   const isToday = dateVal === todayStr();
 
   if (isToday && currentPrice)       { sp500 = currentPrice; }
-  else if (isToday)                  { const r = await fetchCurrentPrice(); if (r) { currentPrice = r.price; sp500 = r.price; showPriceBar(r.price, r.prev, r.asOf); } }
+  else if (isToday)                  { const r = await fetchCurrentPrice(); if (r) { currentPrice = r.price; sp500 = r.price; showPriceBar(r.price, r.prev, r.asOf, r.intraday); } }
   else                               { sp500 = await fetchHistoricalPrice(dateVal); }
   setAdding(false);
 
