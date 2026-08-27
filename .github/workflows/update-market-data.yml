@@ -45,7 +45,9 @@ jobs:
             echo "No change in data/ — nothing to commit."
             exit 0
           fi
-          git commit -m "data: update S&P 500 price and USD/ILS rate [skip ci]"
+          # No [skip ci]: this commit must reach Pages, and the push trigger above is
+          # path-filtered to the workflow and script, so it cannot re-trigger itself.
+          git commit -m "data: update S&P 500 price and USD/ILS rate"
           git push origin HEAD:${{ github.ref_name }}
           echo "Committed:"
           git show --stat --oneline HEAD | head -5
