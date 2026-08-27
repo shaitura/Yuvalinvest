@@ -1,0 +1,46 @@
+name: Update market data
+
+on:
+  schedule:
+    # ~00:20 Israel time — after the US market close (16:00 ET) on the previous day
+    - cron: '20 21 * * *'
+    # ~16:20 Israel time — after the Bank of Israel publishes the representative rate
+    - cron: '20 13 * * *'
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/update-market-data.yml'
+      - 'scripts/fetch-market-data.mjs'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-market-data-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Fetch prices
+        run: node scripts/fetch-market-data.mjs
+
+      - name: Commit if changed
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- data/; then
+            echo "No change in data/ — nothing to commit."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git commit -m "data: update S&P 500 price and USD/ILS rate [skip ci]"
+          git push origin HEAD:${{ github.ref_name }}
