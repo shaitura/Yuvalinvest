@@ -22,8 +22,20 @@ const UA         = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, l
 const log  = (...a) => console.log(...a);
 const warn = (...a) => console.log('WARN:', ...a);
 
+// Node's fetch has no default timeout — without this an unresponsive source
+// (edge.boi.gov.il simply does not answer some networks) hangs the whole job.
+const TIMEOUT_MS = 20000;
+
 async function get(url, { json = true } = {}) {
-  const r = await fetch(url, { headers: { 'User-Agent': UA, Accept: json ? 'application/json,*/*' : 'text/csv,*/*' } });
+  let r;
+  try {
+    r = await fetch(url, {
+      headers: { 'User-Agent': UA, Accept: json ? 'application/json,*/*' : 'text/csv,*/*' },
+      signal:  AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch (e) {
+    throw new Error(e.name === 'TimeoutError' ? `timed out after ${TIMEOUT_MS}ms` : `${e.name}: ${e.message}`);
+  }
   if (!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
   return json ? r.json() : r.text();
 }
