@@ -1,0 +1,14 @@
+name: Set goal
+on:
+  push:
+    paths: ['scripts/set-goal.mjs']
+jobs:
+  set:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: npm i -D playwright && npx playwright install --with-deps chromium
+      - run: node scripts/set-goal.mjs
