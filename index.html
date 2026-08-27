@@ -1085,7 +1085,34 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
 // ── MULTI-CHILD KEY ───────────────────────────────────────────────────────────
-const childKey = new URLSearchParams(location.search).get('child') || 'default';
+// ── WHICH CHILD ──────────────────────────────────────────────────────────────
+// Every child gets their own page and their own data: ?child=<key> → children/<key>.
+// To add a sibling, just open the app once with a new key (e.g. ?child=noa) and
+// fill in the setup wizard — nothing else to configure, here or in Firebase.
+//
+// Resolution order, most explicit first:
+//   1. ?child= in the URL     — a shared link always wins
+//   2. this device's remembered child — the installed PWA icon opens start_url "./",
+//      which carries no query string, so without this it would always land on the
+//      fallback tank no matter whose phone it is
+//   3. DEFAULT_CHILD          — a brand-new device that has never opened a link
+const DEFAULT_CHILD     = 'yuval';
+const CHILD_STORAGE_KEY = 'yuvalinvest.child';
+const ILLEGAL_KEY       = /[.#$\[\]\/]/;   // characters Firebase paths reject
+
+function rememberedChild() {
+  // localStorage throws in private mode or when site data is blocked — never let
+  // that take the app down, just fall through to the default.
+  try { return localStorage.getItem(CHILD_STORAGE_KEY) || null; } catch (_) { return null; }
+}
+function rememberChild(key) {
+  try { localStorage.setItem(CHILD_STORAGE_KEY, key); } catch (_) {}
+}
+
+const rawChild      = new URLSearchParams(location.search).get('child');
+const requestedChild = (rawChild && !ILLEGAL_KEY.test(rawChild) && rawChild.trim()) || null;
+const childKey       = requestedChild || rememberedChild() || DEFAULT_CHILD;
+if (requestedChild) rememberChild(requestedChild);
 const FB_PATH  = `children/${childKey}`;
 
 // ── STATE ────────────────────────────────────────────────────────────────────
