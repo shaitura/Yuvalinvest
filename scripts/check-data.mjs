@@ -1,47 +1,38 @@
-// Temporary, STRICTLY READ-ONLY: report what Firebase actually holds, live.
-// No clicks, no form input, no function calls that write.
+// Temporary, STRICTLY READ-ONLY: probe candidate child keys for investments.
 import { chromium } from 'playwright';
 const b = await chromium.launch();
 const p = await b.newPage();
-
-// Hard guard: fail loudly if the page ever tries to WRITE to Firebase.
 const writes = [];
 p.on('request', r => {
   const m = r.method(), u = r.url();
   if (u.includes('firebasedatabase.app') && ['PUT','POST','PATCH','DELETE'].includes(m)) writes.push(`${m} ${u}`);
 });
-
 await p.goto('https://shaitura.github.io/Yuvalinvest/', { waitUntil: 'networkidle', timeout: 60000 });
-await p.waitForTimeout(6000);
+await p.waitForTimeout(5000);
 
-const state = await p.evaluate(() => ({
-  childKey:    typeof childKey !== 'undefined' ? childKey : '?',
-  fbPath:      typeof FB_PATH  !== 'undefined' ? FB_PATH  : '?',
-  count:       Array.isArray(investments) ? investments.length : 'not an array',
-  settings,
-  goal,
-  list: (investments || []).map(i => ({ date: i.date, nis: i.amountNIS, sp: i.sp500Price, note: i.note || '' })),
-}));
+const KEYS = ['default','yuval','yuvali','Yuval','YUVAL','יובל','יובלי','shai','shaitura',
+              'yuval1','child1','kid1','test','main','a','1','noa','noya','ella','maya','roni','shira'];
 
-console.log('=== מה שהאפליקציה טענה מ-Firebase, חי ===');
-console.log('  childKey :', state.childKey, '  (path:', state.fbPath + ')');
-console.log('  שם       :', JSON.stringify(state.settings));
-console.log('  יעד      :', JSON.stringify(state.goal));
-console.log('  מספר פעימות:', state.count);
-console.log('\n  הפעימות:');
-state.list.forEach((i, n) => console.log(`    ${n + 1}. ${i.date}  ₪${i.nis}  @ ${i.sp}  ${i.note}`));
-// Reading the /children root is denied by the security rules (as it should be),
-// so read only this child's own node — the same path the app itself reads.
-let mine = null;
-try {
-  mine = await p.evaluate(async () => {
-    const snap = await db.ref(`${FB_PATH}/investments`).once('value');
-    const v = snap.val();
-    return v ? Object.keys(v).length : 0;
-  });
-} catch (e) { mine = 'read failed: ' + e.message.split('\n')[0]; }
-console.log('\n=== קריאה ישירה מהמסד (לא דרך ה-UI) ===');
-console.log(`  ${state.fbPath}/investments → ${mine} רשומות`);
-console.log('\n=== כתיבות שבוצעו במהלך הבדיקה ===');
+const rows = await p.evaluate(async keys => {
+  const out = [];
+  for (const k of keys) {
+    try {
+      const snap = await db.ref(`children/${k}`).once('value');
+      const v = snap.val();
+      if (!v) { out.push([k, 'ריק לגמרי', '', '']); continue; }
+      const n = Object.keys(v.investments || {}).length;
+      out.push([k, n + ' פעימות', v.settings?.name || '—', v.goal?.name || '—']);
+    } catch (e) { out.push([k, 'שגיאה: ' + e.message.slice(0, 40), '', '']); }
+  }
+  return out;
+}, KEYS);
+
+console.log('=== סריקת מפתחות ילד (קריאה בלבד) ===');
+console.log('  מפתח'.padEnd(16), 'פעימות'.padEnd(16), 'שם'.padEnd(12), 'יעד');
+for (const [k, n, name, goal] of rows) {
+  const mark = /^[1-9]/.test(n) ? '  <<< כאן יש נתונים' : '';
+  console.log('  ' + k.padEnd(14), String(n).padEnd(16), String(name).padEnd(12), goal, mark);
+}
+console.log('\n=== כתיבות ===');
 console.log(writes.length ? writes : '  אפס. קריאה בלבד. ✅');
 await b.close();
