@@ -36,37 +36,48 @@ async function readJsonOr(file, fallback) {
 }
 
 // ── S&P 500 daily history ────────────────────────────────────────────────────
-async function historyFromYahoo() {
-  const url = 'https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?range=15y&interval=1d';
-  const d   = await get(url);
-  const res = d?.chart?.result?.[0];
-  const ts  = res?.timestamp;
-  const cl  = res?.indicators?.quote?.[0]?.close;
-  if (!ts?.length || !cl?.length) throw new Error('yahoo history: unexpected shape');
-  const closes = {};
-  for (let i = 0; i < ts.length; i++) if (cl[i] != null && cl[i] > 0) closes[isoDay(ts[i])] = round2(cl[i]);
-  return { closes, source: 'yahoo', meta: res.meta || null };
-}
-
-async function historyFromStooq() {
-  const csv  = await get('https://stooq.com/q/d/l/?s=%5Espx&i=d', { json: false });
-  const rows = csv.trim().split('\n');
-  const head = rows.shift().split(',').map(s => s.trim().toLowerCase());
-  const di   = head.indexOf('date'), ci = head.indexOf('close');
-  if (di < 0 || ci < 0) throw new Error('stooq history: unexpected header ' + head.join(','));
+// FRED (Federal Reserve Bank of St. Louis) is the primary source: official, no
+// API key, plain CSV, and — unlike Yahoo and Stooq — it does not block requests
+// coming from datacentre IPs such as GitHub's runners. It carries a rolling
+// 10-year window of daily S&P 500 closes, which is why the script merges each
+// run onto the previously committed history instead of replacing it.
+function parseCsvCloses(csv, label) {
+  const rows = csv.trim().split(/\r?\n/);
+  rows.shift(); // header
   const closes = {};
   for (const row of rows) {
     const f = row.split(',');
-    const v = parseFloat(f[ci]);
-    if (/^\d{4}-\d{2}-\d{2}$/.test(f[di]) && v > 0) closes[f[di]] = round2(v);
+    const day = (f[0] || '').trim();
+    const v   = parseFloat((f[1] || '').trim());
+    if (/^\d{4}-\d{2}-\d{2}$/.test(day) && v > 0) closes[day] = round2(v);
   }
-  if (!Object.keys(closes).length) throw new Error('stooq history: no rows parsed');
-  return { closes, source: 'stooq', meta: null };
+  if (!Object.keys(closes).length) throw new Error(`${label}: no rows parsed from ${rows.length} lines`);
+  return closes;
+}
+
+async function historyFromFred() {
+  const csv = await get('https://fred.stlouisfed.org/graph/fredgraph.csv?id=SP500', { json: false });
+  return { closes: parseCsvCloses(csv, 'fred'), source: 'fred' };
+}
+
+async function historyFromStooq() {
+  const csv = await get('https://stooq.com/q/d/l/?s=%5Espx&i=d', { json: false });
+  return { closes: parseCsvCloses(csv, 'stooq'), source: 'stooq' };
+}
+
+async function historyFromYahoo() {
+  const d   = await get('https://query2.finance.yahoo.com/v8/finance/chart/%5EGSPC?range=10y&interval=1d');
+  const res = d?.chart?.result?.[0];
+  const ts  = res?.timestamp, cl = res?.indicators?.quote?.[0]?.close;
+  if (!ts?.length || !cl?.length) throw new Error('yahoo history: unexpected shape');
+  const closes = {};
+  for (let i = 0; i < ts.length; i++) if (cl[i] != null && cl[i] > 0) closes[isoDay(ts[i])] = round2(cl[i]);
+  return { closes, source: 'yahoo' };
 }
 
 // ── S&P 500 latest quote ─────────────────────────────────────────────────────
 async function quoteFromYahoo() {
-  const d = await get('https://query1.finance.yahoo.com/v8/finance/chart/%5EGSPC?range=5d&interval=1d');
+  const d = await get('https://query2.finance.yahoo.com/v8/finance/chart/%5EGSPC?range=5d&interval=1d');
   const m = d?.chart?.result?.[0]?.meta;
   if (!m?.regularMarketPrice) throw new Error('yahoo quote: no regularMarketPrice');
   return {
@@ -81,24 +92,39 @@ function quoteFromHistory(closes, source) {
   const days = Object.keys(closes).sort();
   if (!days.length) throw new Error('no history to derive a quote from');
   const last = days[days.length - 1], prev = days[days.length - 2];
-  return { price: closes[last], prevClose: prev ? closes[prev] : null, asOf: last, source: `${source}-history` };
+  return { price: closes[last], prevClose: prev ? closes[prev] : null, asOf: last, source };
 }
 
 // ── USD/ILS ──────────────────────────────────────────────────────────────────
-async function rateFromBoi() {
-  const url = 'https://edge.boi.gov.il/FusionEdgeServer/sdmx/v2/data/dataflow/BOI.STATISTICS/EXR/1.0/RER_USD_ILS--ILUDAH?lastNObservations=1&format=sdmx-json';
-  const d      = await get(url);
+// The URL the app used (…/EXR/1.0/RER_USD_ILS--ILUDAH) now returns 404, so try
+// the documented variants in turn and log which one answers.
+const BOI_URLS = [
+  'https://edge.boi.gov.il/FusionEdgeServer/sdmx/v2/data/dataflow/BOI.STATISTICS/EXR/1.0/RER_USD_ILS?lastNObservations=1&format=sdmx-json',
+  'https://edge.boi.gov.il/FusionEdgeServer/sdmx/v2/data/dataflow/BOI.STATISTICS/EXR/1.0/all?c[SERIES_CODE]=RER_USD_ILS&lastNObservations=1&format=sdmx-json',
+  'https://edge.boi.gov.il/FusionEdgeServer/sdmx/v2/data/dataflow/BOI.STATISTICS/EXR/1.0/RER_USD_ILS--ILUDAH?lastNObservations=1&format=sdmx-json',
+];
+
+function parseBoiSdmx(d) {
   const series = d?.data?.dataSets?.[0]?.series;
   const key    = series && Object.keys(series)[0];
   const obs    = key != null ? series[key]?.observations : null;
-  if (!obs) throw new Error('boi: unexpected shape ' + JSON.stringify(d).slice(0, 400));
+  if (!obs) throw new Error('unexpected shape ' + JSON.stringify(d).slice(0, 300));
   const idx  = Object.keys(obs).sort((a, b) => +b - +a)[0];
   const rate = obs[idx]?.[0];
-  if (!(rate > 0)) throw new Error('boi: no rate value');
+  if (!(rate > 0)) throw new Error('no rate value');
   const dim  = d?.data?.structures?.[0]?.dimensions?.observation?.[0]
             || d?.data?.structure?.dimensions?.observation?.[0];
   const asOf = dim?.values?.[+idx]?.id || dim?.values?.[+idx]?.start?.slice(0, 10) || null;
   return { rate: Math.round(rate * 10000) / 10000, asOf, source: 'boi' };
+}
+
+async function rateFromBoi() {
+  const errors = [];
+  for (const url of BOI_URLS) {
+    try { return parseBoiSdmx(await get(url)); }
+    catch (e) { errors.push(`${url.slice(60, 130)}… → ${e.message.slice(0, 120)}`); }
+  }
+  throw new Error('boi: ' + errors.join(' ;; '));
 }
 
 async function rateFromFrankfurter() {
@@ -141,20 +167,20 @@ async function main() {
 
   log('S&P 500 history:');
   let history = null;
-  try { history = await firstOk('history', [historyFromYahoo, historyFromStooq]); }
+  try { history = await firstOk('history', [historyFromFred, historyFromStooq, historyFromYahoo]); }
   catch (e) { warn(e.message); failed = true; }
 
   // Merge onto whatever we already had, so a short-range source never truncates history.
   const closes = { ...(prevHistory.closes || {}), ...(history?.closes || {}) };
   const days   = Object.keys(closes).sort();
-  log(`  ${days.length} trading days, ${days[0]} .. ${days[days.length - 1]}`);
+  log(days.length ? `  ${days.length} trading days, ${days[0]} .. ${days[days.length - 1]}` : '  NO trading days available');
 
   log('S&P 500 quote:');
   let quote = null;
   try {
     quote = await firstOk('quote', [
+      function fromHistory() { return quoteFromHistory(closes, history?.source || 'carried-over'); },
       quoteFromYahoo,
-      function fromHistory() { return quoteFromHistory(closes, history?.source || 'prev'); },
     ]);
   } catch (e) { warn(e.message); failed = true; }
   if (!quote && prevMarket?.sp500) { warn('  keeping previous sp500 value'); quote = prevMarket.sp500; }

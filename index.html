@@ -749,8 +749,9 @@
 
     <!-- API warning -->
     <div id="apiAlert" class="alert alert-warn" style="display:none">
-      ⚠️ לא ניתן לטעון מחיר אוטומטית. הכניסי ידנית לפי
-      <a href="https://finance.yahoo.com/quote/%5EGSPC/" target="_blank" rel="noopener">Yahoo Finance</a>.
+      ⚠️ המחיר האוטומטי לא נטען כרגע. אפשר להכניס ידנית לפי
+      <a href="https://finance.yahoo.com/quote/%5EGSPC/" target="_blank" rel="noopener">Yahoo Finance</a>,
+      או לנסות שוב מאוחר יותר.
     </div>
 
     <!-- Stats grid (2x2) -->
@@ -1118,57 +1119,56 @@ function saveInv()  { db.ref(`${FB_PATH}/investments`).set(invToObj(investments)
 function saveSett() { db.ref(`${FB_PATH}/settings`).set(settings); }
 function saveGoalS(){ db.ref(`${FB_PATH}/goal`).set(goal); }
 
-// ── API: CURRENT S&P 500 ─────────────────────────────────────────────────────
+// ── MARKET DATA: STATIC JSON, SAME ORIGIN ────────────────────────────
+// Yahoo Finance and edge.boi.gov.il send no CORS headers, so the browser cannot
+// call them directly, and free CORS proxies keep breaking. Instead
+// .github/workflows/update-market-data.yml fetches the numbers server-side twice
+// a day and commits them here — these files are served from our own origin, so
+// no CORS and no third-party service is involved at runtime.
+const MARKET_URL  = 'data/market.json';   // current price, prev close, USD/ILS
+const HISTORY_URL = 'data/history.json';  // daily closes, for past-dated beats
+let   _marketP  = null;
+let   _historyP = null;
+
+function loadDataFile(url) {
+  return fetch(`${url}?t=${Date.now()}`, { cache: 'no-store' })
+    .then(r => { if (!r.ok) throw new Error(`${url} → HTTP ${r.status}`); return r.json(); });
+}
+// Memoised so one page-load hits each file once; a failure is not cached.
+function getMarket()  { if (!_marketP)  _marketP  = loadDataFile(MARKET_URL ).catch(e => { _marketP  = null; throw e; }); return _marketP;  }
+function getHistory() { if (!_historyP) _historyP = loadDataFile(HISTORY_URL).catch(e => { _historyP = null; throw e; }); return _historyP; }
+function invalidateMarketData() { _marketP = null; _historyP = null; }
+
+// ── API: CURRENT S&P 500 ────────────────────────────────────
 async function fetchCurrentPrice() {
-  const SYM   = '%5EGSPC';
-  const PROXY = 'https://corsproxy.io/?';
-  const URL   = `https://query1.finance.yahoo.com/v8/finance/chart/${SYM}?range=1d&interval=1d`;
-  for (const fn of [() => fetch(URL), () => fetch(PROXY + encodeURIComponent(URL))]) {
-    try {
-      const r = await fn(); if (!r.ok) continue;
-      const d = await r.json();
-      const m = d?.chart?.result?.[0]?.meta;
-      if (m?.regularMarketPrice) return { price: m.regularMarketPrice, prev: m.chartPreviousClose || m.previousClose || null };
-    } catch(_) {}
-  }
+  try {
+    const m = await getMarket();
+    if (m?.sp500?.price > 0) return { price: m.sp500.price, prev: m.sp500.prevClose || null, asOf: m.sp500.asOf || null };
+  } catch (e) { console.warn('fetchCurrentPrice:', e.message); }
   return null;
 }
 
-// ── API: HISTORICAL S&P 500 ──────────────────────────────────────────────────
+// ── API: HISTORICAL S&P 500 ────────────────────────────────
 async function fetchHistoricalPrice(dateStr) {
-  const SYM   = '%5EGSPC';
-  const PROXY = 'https://corsproxy.io/?';
-  const d  = new Date(dateStr + 'T12:00:00');
-  const p1 = Math.floor(d.getTime() / 1000) - 86400;
-  const p2 = Math.floor(d.getTime() / 1000) + 86400 * 5;
-  const URL = `https://query1.finance.yahoo.com/v8/finance/chart/${SYM}?period1=${p1}&period2=${p2}&interval=1d`;
-  for (const fn of [() => fetch(URL), () => fetch(PROXY + encodeURIComponent(URL))]) {
-    try {
-      const r = await fn(); if (!r.ok) continue;
-      const data   = await r.json();
-      const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
-      if (closes?.length) { const v = closes.find(p => p != null && p > 0); if (v) return v; }
-    } catch(_) {}
-  }
+  try {
+    const closes = (await getHistory())?.closes || {};
+    if (closes[dateStr] > 0) return closes[dateStr];
+    // Markets are shut on weekends and holidays — use the last trading day before.
+    const days = Object.keys(closes).sort();
+    let before = null;
+    for (const d of days) { if (d <= dateStr) before = d; else break; }
+    if (before) return closes[before];
+    // Date predates the series: say nothing rather than guess — manual entry takes over.
+  } catch (e) { console.warn('fetchHistoricalPrice:', e.message); }
   return null;
 }
 
-// ── API: EXCHANGE RATE ───────────────────────────────────────────────────────
+// ── API: EXCHANGE RATE ───────────────────────────────────
 async function fetchExchangeRate() {
-  const URL   = 'https://edge.boi.gov.il/FusionEdgeServer/sdmx/v2/data/dataflow/BOI.STATISTICS/EXR/1.0/RER_USD_ILS--ILUDAH?lastNObservations=1&format=sdmx-json';
-  const PROXY = 'https://corsproxy.io/?';
-  for (const fn of [() => fetch(URL), () => fetch(PROXY + encodeURIComponent(URL))]) {
-    try {
-      const r = await fn(); if (!r.ok) continue;
-      const d   = await r.json();
-      const obs = d?.data?.dataSets?.[0]?.series?.['0:0:0:0']?.observations;
-      if (obs) {
-        const keys = Object.keys(obs).sort((a,b) => +b - +a);
-        const rate = obs[keys[0]]?.[0];
-        if (rate && rate > 0) return rate;
-      }
-    } catch(_) {}
-  }
+  try {
+    const m = await getMarket();
+    if (m?.usdIls?.rate > 0) return m.usdIls.rate;
+  } catch (e) { console.warn('fetchExchangeRate:', e.message); }
   return null;
 }
 
@@ -1180,7 +1180,7 @@ async function initPrice() {
 
   if (res) {
     currentPrice = res.price;
-    showPriceBar(res.price, res.prev);
+    showPriceBar(res.price, res.prev, res.asOf);
     document.getElementById('apiAlert').style.display    = 'none';
     document.getElementById('manualGroup').style.display = 'none';
   } else {
@@ -1200,12 +1200,13 @@ async function initPrice() {
 }
 
 async function refreshPrice() {
+  invalidateMarketData();
   spinning(true);
   const [res, rate] = await Promise.all([fetchCurrentPrice(), fetchExchangeRate()]);
   spinning(false);
   if (res) {
     currentPrice = res.price;
-    showPriceBar(res.price, res.prev);
+    showPriceBar(res.price, res.prev, res.asOf);
     document.getElementById('apiAlert').style.display    = 'none';
     document.getElementById('manualGroup').style.display = 'none';
   }
@@ -1216,9 +1217,11 @@ async function refreshPrice() {
   updateUI();
 }
 
-function showPriceBar(price, prev) {
+function showPriceBar(price, prev, asOf) {
   document.getElementById('sp500Val').textContent = fmtNum(price) + ' $';
-  document.getElementById('lastUpdated').textContent = 'עודכן: ' + new Date().toLocaleTimeString('he-IL');
+  const asOfHe = asOf ? asOf.split('-').reverse().join('/') : null;
+  document.getElementById('lastUpdated').textContent =
+    'מחיר סגירה' + (asOfHe ? ' מ-' + asOfHe : '') + ' • מתעדכן פעמיים ביום';
   const chgEl = document.getElementById('sp500Change');
   if (prev && prev > 0) {
     const chg = price - prev, pct = (chg / prev) * 100, sign = chg >= 0 ? '+' : '';
@@ -1456,7 +1459,7 @@ async function addInvestment() {
   const isToday = dateVal === todayStr();
 
   if (isToday && currentPrice)       { sp500 = currentPrice; }
-  else if (isToday)                  { const r = await fetchCurrentPrice(); if (r) { currentPrice = r.price; sp500 = r.price; showPriceBar(r.price, r.prev); } }
+  else if (isToday)                  { const r = await fetchCurrentPrice(); if (r) { currentPrice = r.price; sp500 = r.price; showPriceBar(r.price, r.prev, r.asOf); } }
   else                               { sp500 = await fetchHistoricalPrice(dateVal); }
   setAdding(false);
 
