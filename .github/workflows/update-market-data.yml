@@ -36,12 +36,16 @@ jobs:
       - name: Commit if changed
         run: |
           set -euo pipefail
-          if git diff --quiet -- data/; then
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Stage first: `git diff` alone cannot see files that are still untracked,
+          # which silently skipped the very first commit of data/.
+          git add -A data/
+          if git diff --cached --quiet -- data/; then
             echo "No change in data/ — nothing to commit."
             exit 0
           fi
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/
           git commit -m "data: update S&P 500 price and USD/ILS rate [skip ci]"
           git push origin HEAD:${{ github.ref_name }}
+          echo "Committed:"
+          git show --stat --oneline HEAD | head -5
