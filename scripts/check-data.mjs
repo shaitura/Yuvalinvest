@@ -23,13 +23,6 @@ const state = await p.evaluate(() => ({
   list: (investments || []).map(i => ({ date: i.date, nis: i.amountNIS, sp: i.sp500Price, note: i.note || '' })),
 }));
 
-// Read the sibling children/* keys straight from the database, read-only.
-const all = await p.evaluate(async () => {
-  const snap = await db.ref('children').once('value');
-  const v = snap.val() || {};
-  return Object.fromEntries(Object.entries(v).map(([k, c]) => [k, Object.keys(c?.investments || {}).length]));
-});
-
 console.log('=== מה שהאפליקציה טענה מ-Firebase, חי ===');
 console.log('  childKey :', state.childKey, '  (path:', state.fbPath + ')');
 console.log('  שם       :', JSON.stringify(state.settings));
@@ -37,8 +30,18 @@ console.log('  יעד      :', JSON.stringify(state.goal));
 console.log('  מספר פעימות:', state.count);
 console.log('\n  הפעימות:');
 state.list.forEach((i, n) => console.log(`    ${n + 1}. ${i.date}  ₪${i.nis}  @ ${i.sp}  ${i.note}`));
-console.log('\n=== כל הילדים במסד ===');
-for (const [k, n] of Object.entries(all)) console.log(`  children/${k} → ${n} פעימות`);
+// Reading the /children root is denied by the security rules (as it should be),
+// so read only this child's own node — the same path the app itself reads.
+let mine = null;
+try {
+  mine = await p.evaluate(async () => {
+    const snap = await db.ref(`${FB_PATH}/investments`).once('value');
+    const v = snap.val();
+    return v ? Object.keys(v).length : 0;
+  });
+} catch (e) { mine = 'read failed: ' + e.message.split('\n')[0]; }
+console.log('\n=== קריאה ישירה מהמסד (לא דרך ה-UI) ===');
+console.log(`  ${state.fbPath}/investments → ${mine} רשומות`);
 console.log('\n=== כתיבות שבוצעו במהלך הבדיקה ===');
 console.log(writes.length ? writes : '  אפס. קריאה בלבד. ✅');
 await b.close();
