@@ -1,0 +1,27 @@
+{
+  "name": "מסע ההשקעות של אביבי",
+  "short_name": "השקעות",
+  "description": "מעקב השקעות לילדים במדד S&P 500",
+  "start_url": "./?child=aviv",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0b1120",
+  "theme_color": "#2563eb",
+  "orientation": "portrait",
+  "lang": "he",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "icon-aviv.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-aviv.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

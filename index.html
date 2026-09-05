@@ -5,19 +5,113 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>מסע ההשקעות ✨</title>
   <!-- PWA -->
-  <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="icon.svg">
-  <meta name="theme-color" content="#7c3aed">
+  <link rel="manifest" href="manifest.json" id="manifestLink">
+  <link rel="icon" href="icon.svg" type="image/svg+xml" id="faviconLink">
+  <link rel="apple-touch-icon" href="icon.svg" id="touchIcon">
+  <meta name="theme-color" content="#7c3aed" id="themeColor">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="מסע ההשקעות">
+  <meta name="apple-mobile-web-app-title" content="מסע ההשקעות" id="appTitleMeta">
+
+  <!-- ===== WHICH CHILD (runs before first paint) =================================
+       Every child gets their own link, their own look and their own data:
+         ?child=<key>  →  Firebase children/<key>
+       This block resolves the key and stamps that child's palette and PWA identity
+       onto the document BEFORE the body renders — doing it later would flash the
+       default (Yuval's purple) on Aviv's screen on every single load.
+       Adding a sibling = one entry in CHILDREN below + a manifest-<key>.json.
+       ========================================================================== -->
+  <script>
+  (function () {
+    var CHILDREN = {
+      yuval: {
+        label: 'יובלי', gender: 'f', emoji: '⭐',
+        // Yuval keeps the original manifest.json so her already-installed PWA is
+        // never disturbed — changing an installed app's manifest URL can rename it.
+        manifest: 'manifest.json', icon: 'icon.svg', appTitle: 'מסע ההשקעות',
+        emojiSet: ['⭐','🌟','💫','🦋','🌈','🚀','🦄','🐼','🦊'],
+        theme: { primary:'#7c3aed', primaryLight:'#a78bfa', primary2:'#a855f7',
+                 primaryRgb:'124,58,237', tint:'#faf5ff', tintBorder:'#ede9fe',
+                 secondary:'#f59e0b', secondary2:'#f97316',
+                 bg1:'#0f0c29', bg2:'#302b63', bg3:'#24243e' }
+      },
+      aviv: {
+        label: 'אביבי', gender: 'm', emoji: '🚀',
+        manifest: 'manifest-aviv.json', icon: 'icon-aviv.svg', appTitle: 'מסע ההשקעות של אביבי',
+        emojiSet: ['🚀','⚽','🦖','🦁','🏆','🎮','⚡','🦈','🔥'],
+        theme: { primary:'#2563eb', primaryLight:'#60a5fa', primary2:'#0ea5e9',
+                 primaryRgb:'37,99,235', tint:'#eff6ff', tintBorder:'#dbeafe',
+                 secondary:'#f59e0b', secondary2:'#ea580c',
+                 bg1:'#0b1120', bg2:'#14346b', bg3:'#0f2440' }
+      }
+    };
+
+    var DEFAULT_CHILD = 'yuval';
+    var STORAGE_KEY   = 'yuvalinvest.child';
+    var ILLEGAL_KEY   = /[.#$\[\]\/]/;   // characters Firebase paths reject
+
+    // Resolution order, most explicit first:
+    //   1. ?child= in the URL  — a shared link always wins
+    //   2. this device's remembered child — an installed PWA whose start_url has no
+    //      query string would otherwise always land on the default
+    //   3. DEFAULT_CHILD — a brand-new device that has never opened a link
+    var raw = null;
+    try { raw = new URLSearchParams(location.search).get('child'); } catch (e) {}
+    var requested = (raw && !ILLEGAL_KEY.test(raw) && raw.trim()) || null;
+    var remembered = null;
+    // localStorage throws in private mode or when site data is blocked — never let
+    // that take the app down, just fall through to the default.
+    try { remembered = localStorage.getItem(STORAGE_KEY) || null; } catch (e) {}
+    var key = requested || remembered || DEFAULT_CHILD;
+    if (requested) { try { localStorage.setItem(STORAGE_KEY, requested); } catch (e) {} }
+
+    // An unknown key is a real, supported case (open ?child=ziv and the wizard runs).
+    // It gets its own Firebase path and its own settings; only the look and the PWA
+    // identity fall back to the default, because those live in files.
+    var profile = CHILDREN[key] || null;
+    var theme   = (profile && profile.theme) || CHILDREN[DEFAULT_CHILD].theme;
+
+    var root = document.documentElement;
+    root.style.setProperty('--primary',       theme.primary);
+    root.style.setProperty('--primary-light', theme.primaryLight);
+    root.style.setProperty('--primary-2',     theme.primary2);
+    root.style.setProperty('--primary-rgb',   theme.primaryRgb);
+    root.style.setProperty('--tint',          theme.tint);
+    root.style.setProperty('--tint-border',   theme.tintBorder);
+    root.style.setProperty('--secondary',     theme.secondary);
+    root.style.setProperty('--secondary-2',   theme.secondary2);
+    root.style.setProperty('--bg1', theme.bg1);
+    root.style.setProperty('--bg2', theme.bg2);
+    root.style.setProperty('--bg3', theme.bg3);
+
+    if (profile) {
+      var m = document.getElementById('manifestLink');
+      var i = document.getElementById('touchIcon');
+      var f = document.getElementById('faviconLink');
+      var c = document.getElementById('themeColor');
+      var t = document.getElementById('appTitleMeta');
+      if (m) m.setAttribute('href', profile.manifest);
+      if (i) i.setAttribute('href', profile.icon);
+      if (f) f.setAttribute('href', profile.icon);
+      if (c) c.setAttribute('content', theme.primary);
+      if (t) t.setAttribute('content', profile.appTitle);
+    }
+
+    window.__CHILD_BOOT__ = { key: key, profile: profile, profiles: CHILDREN, theme: theme };
+  })();
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <style>
     /* ===== VARIABLES ===== */
     :root {
       --primary:       #7c3aed;
       --primary-light: #a78bfa;
+      --primary-2:     #a855f7;   /* gradient partner for --primary  */
+      --primary-rgb:   124,58,237; /* --primary as channels, for rgba() shadows */
+      --tint:          #faf5ff;   /* tinted card surface, follows --primary's hue */
+      --tint-border:   #ede9fe;
       --secondary:     #f59e0b;
+      --secondary-2:   #f97316;   /* gradient partner for --secondary */
       --success:       #10b981;
       --danger:        #ef4444;
       --bg1: #0f0c29;
@@ -68,7 +162,7 @@
     }
     .beats-badge {
       display: inline-block;
-      background: linear-gradient(135deg, var(--secondary), #f97316);
+      background: linear-gradient(135deg, var(--secondary), var(--secondary-2));
       color: white;
       padding: 5px 16px;
       border-radius: 99px;
@@ -259,7 +353,7 @@
     /* ===== EDUCATIONAL ===== */
     .edu-toggle { cursor: pointer; user-select: none; }
     .edu-item {
-      border: 1.5px solid #ede9fe;
+      border: 1.5px solid var(--tint-border);
       border-radius: 13px;
       overflow: hidden;
       margin-bottom: 8px;
@@ -270,7 +364,7 @@
       align-items: center;
       padding: 11px 14px;
       cursor: pointer;
-      background: #faf5ff;
+      background: var(--tint);
       user-select: none;
       transition: background .18s;
     }
@@ -327,7 +421,7 @@
       display: block;
       width: 100%;
       padding: 13px;
-      background: linear-gradient(135deg, var(--primary), #a855f7);
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
       color: white;
       border: none;
       border-radius: 14px;
@@ -335,12 +429,12 @@
       font-weight: 700;
       font-family: inherit;
       cursor: pointer;
-      box-shadow: 0 4px 16px rgba(124,58,237,0.35);
+      box-shadow: 0 4px 16px rgba(var(--primary-rgb),0.35);
       transition: transform .18s, box-shadow .18s;
     }
     .btn-primary:hover:not(:disabled) {
       transform: translateY(-2px);
-      box-shadow: 0 6px 22px rgba(124,58,237,0.45);
+      box-shadow: 0 6px 22px rgba(var(--primary-rgb),0.45);
     }
     .btn-primary:disabled { opacity: 0.6; cursor: default; }
 
@@ -361,7 +455,7 @@
     .btn-save {
       flex: 2;
       padding: 11px;
-      background: linear-gradient(135deg, var(--primary), #a855f7);
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
       color: white;
       border: none;
       border-radius: 12px;
@@ -408,8 +502,8 @@
       gap: 10px;
       padding: 13px;
       border-radius: 14px;
-      background: #faf5ff;
-      border: 1.5px solid #ede9fe;
+      background: var(--tint);
+      border: 1.5px solid var(--tint-border);
       margin-bottom: 10px;
       transition: background .18s;
     }
@@ -417,7 +511,7 @@
     .inv-pulse-num {
       width: 38px; height: 38px;
       border-radius: 50%;
-      background: linear-gradient(135deg, var(--primary), #a855f7);
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
       color: white;
       font-size: 0.9rem;
       font-weight: 800;
@@ -504,7 +598,7 @@
     .btn-edit-save {
       flex: 2;
       padding: 9px;
-      background: linear-gradient(135deg, var(--primary), #a855f7);
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
       color: white;
       border: none;
       border-radius: 10px;
@@ -603,7 +697,7 @@
     .emoji-opt:hover   { border-color: var(--primary-light); transform: scale(1.1); }
     .emoji-opt.selected {
       border-color: var(--primary);
-      background: #faf5ff;
+      background: var(--tint);
       transform: scale(1.12);
     }
 
@@ -716,9 +810,31 @@
     /* ===== INV NOTE ===== */
     .inv-note {
       font-size: 0.72rem;
-      color: #a78bfa;
+      color: var(--primary-light);
       font-style: italic;
       margin-top: 2px;
+    }
+
+    /* ===== GENDER PICKER ===== */
+    .gender-picker { display: flex; gap: 8px; }
+    .gender-opt {
+      flex: 1;
+      padding: 10px 6px;
+      font-size: 0.85rem;
+      font-family: inherit;
+      font-weight: 600;
+      color: #475569;
+      background: #f1f5f9;
+      border: 2px solid transparent;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .gender-opt:hover    { background: #e2e8f0; }
+    .gender-opt.selected {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
     }
 
     /* ===== RESPONSIVE ===== */
@@ -760,7 +876,7 @@
         <span class="stat-icon">🐷</span>
         <div class="stat-label">
           שווי נוכחי
-          <button class="tip-btn" onclick="showTip(event,'כמה שווה הכסף שלך היום — אם היית מוכרת הכל עכשיו 💰')">?</button>
+          <button class="tip-btn" onclick="showTip(event, t('tipCurrent'))">?</button>
         </div>
         <div class="stat-value" id="statCurrent">—</div>
       </div>
@@ -834,7 +950,7 @@
             <span class="edu-item-title">💡 מהי השקעה?</span>
             <span class="edu-item-arrow">+</span>
           </div>
-          <div class="edu-item-body">
+          <div class="edu-item-body" data-t-html="eduInvest">
             השקעה היא כשאת נותנת את הכסף שלך לעבוד בשבילך! במקום שהכסף ישב בבית ולא יעשה כלום, הוא הולך לחברות גדולות שמייצרות מוצרים שאנשים אוהבים. עם הזמן, הכסף גדל ואת מרוויחה יותר ממה שנתת! 🚀
           </div>
         </div>
@@ -844,7 +960,7 @@
             <span class="edu-item-title">🌎 מה זה S&P 500?</span>
             <span class="edu-item-arrow">+</span>
           </div>
-          <div class="edu-item-body">
+          <div class="edu-item-body" data-t-html="eduSP500">
             S&P 500 זה כמו "סל" שמכיל את <strong>500 החברות הגדולות ביותר באמריקה</strong> – כמו Apple, Google, ו-Amazon. כשאת משקיעה בו, את בעצם קונה חתיכה קטנה מכולן! זה הרבה יותר בטוח מלקנות מניה אחת. 📱💻🚗
           </div>
         </div>
@@ -854,7 +970,7 @@
             <span class="edu-item-title">💵 מהו רווח?</span>
             <span class="edu-item-arrow">+</span>
           </div>
-          <div class="edu-item-body">
+          <div class="edu-item-body" data-t-html="eduProfit">
             רווח הוא הכסף הנוסף שאת מרוויחה! אם השקעת <strong>₪100</strong> והיום הם שווים <strong>₪115</strong>, אז הרווח שלך הוא <strong>₪15</strong>. הכסף עבד בשבילך ויצר עוד כסף בלי שעשית כלום! 💪
           </div>
         </div>
@@ -884,7 +1000,7 @@
             <span class="edu-item-title">⚡ מה זה פעימת השקעה?</span>
             <span class="edu-item-arrow">+</span>
           </div>
-          <div class="edu-item-body">
+          <div class="edu-item-body" data-t-html="eduBeat">
             כל פעם שאת מביאה כסף להשקיע, זו "<strong>פעימה</strong>"! כמו פעימת לב 💓 — כל פעימה מחזקת את תיק ההשקעות שלך. השקעה בצעדים קטנים ורגולריים נקראת <strong>השקעה תקופתית</strong> וזו אחת האסטרטגיות הטובות ביותר!
           </div>
         </div>
@@ -894,7 +1010,7 @@
 
     <!-- Add investment -->
     <div class="card">
-      <div class="card-title">⚡ הוסיפי פעימת השקעה</div>
+      <div class="card-title" data-t="addCardTitle">⚡ הוסיפי פעימת השקעה</div>
       <div class="form-group">
         <label>📅 תאריך הפעימה</label>
         <input type="date" id="fDate" />
@@ -920,7 +1036,7 @@
       <div id="investmentsList">
         <div class="empty-state">
           <div class="empty-icon">🌱</div>
-          <p>עוד אין פעימות.<br>הוסיפי את הפעימה הראשונה!</p>
+          <p>עוד אין פעימות.<br><span data-t="emptyState">הוסיפי את הפעימה הראשונה!</span></p>
         </div>
       </div>
     </div>
@@ -1007,8 +1123,15 @@
     <div class="modal">
       <h3>⚙️ הגדרות</h3>
       <div class="form-group">
-        <label>👧 שם הילד/ה</label>
+        <label data-t="childNameLabel">👧 שם הילד/ה</label>
         <input type="text" id="settingsNameInput" placeholder="יובלי" />
+      </div>
+      <div class="form-group">
+        <label>🗣️ פנייה</label>
+        <div class="gender-picker" id="settingsGenderPicker">
+          <button class="gender-opt" data-g="f">👧 בלשון נקבה</button>
+          <button class="gender-opt" data-g="m">👦 בלשון זכר</button>
+        </div>
       </div>
       <div class="form-group">
         <label>🌟 אמוג'י</label>
@@ -1038,14 +1161,21 @@
   <div class="setup-overlay" id="setupOverlay">
     <div class="setup-card">
       <div class="setup-icon">🚀</div>
-      <h2>ברוכה הבאה!</h2>
-      <p>בואי נגדיר את מסע ההשקעות שלך</p>
+      <h2 data-t="welcome">ברוכה הבאה!</h2>
+      <p data-t="setupIntro">בואי נגדיר את מסע ההשקעות שלך</p>
       <div class="form-group">
-        <label>👧 מה השם שלך?</label>
+        <label data-t="yourNameLabel">👧 מה השם שלך?</label>
         <input type="text" id="setupName" placeholder="יובלי" />
       </div>
       <div class="form-group">
-        <label>🌟 בחרי אמוג'י</label>
+        <label>🗣️ איך לפנות אליך?</label>
+        <div class="gender-picker" id="setupGenderPicker">
+          <button class="gender-opt" data-g="f">👧 בלשון נקבה</button>
+          <button class="gender-opt" data-g="m">👦 בלשון זכר</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label data-t="pickEmojiLabel">🌟 בחרי אמוג'י</label>
         <div class="emoji-picker" id="setupEmojiPicker">
           <button class="emoji-opt selected" data-e="⭐">⭐</button>
           <button class="emoji-opt" data-e="🌟">🌟</button>
@@ -1065,7 +1195,7 @@
         <label>💰 כמה עולה היעד? (₪)</label>
         <input type="number" id="setupGoalAmount" placeholder="1000" min="1" />
       </div>
-      <button class="btn-primary" onclick="finishSetup()">✨ בואי נתחיל!</button>
+      <button class="btn-primary" id="setupStartBtn" onclick="finishSetup()">✨ בואי נתחיל!</button>
     </div>
   </div>
 
@@ -1084,36 +1214,105 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// ── MULTI-CHILD KEY ───────────────────────────────────────────────────────────
 // ── WHICH CHILD ──────────────────────────────────────────────────────────────
-// Every child gets their own page and their own data: ?child=<key> → children/<key>.
-// To add a sibling, just open the app once with a new key (e.g. ?child=noa) and
-// fill in the setup wizard — nothing else to configure, here or in Firebase.
-//
-// Resolution order, most explicit first:
-//   1. ?child= in the URL     — a shared link always wins
-//   2. this device's remembered child — the installed PWA icon opens start_url "./",
-//      which carries no query string, so without this it would always land on the
-//      fallback tank no matter whose phone it is
-//   3. DEFAULT_CHILD          — a brand-new device that has never opened a link
-const DEFAULT_CHILD     = 'yuval';
-const CHILD_STORAGE_KEY = 'yuvalinvest.child';
-const ILLEGAL_KEY       = /[.#$\[\]\/]/;   // characters Firebase paths reject
-
-function rememberedChild() {
-  // localStorage throws in private mode or when site data is blocked — never let
-  // that take the app down, just fall through to the default.
-  try { return localStorage.getItem(CHILD_STORAGE_KEY) || null; } catch (_) { return null; }
-}
-function rememberChild(key) {
-  try { localStorage.setItem(CHILD_STORAGE_KEY, key); } catch (_) {}
-}
-
-const rawChild      = new URLSearchParams(location.search).get('child');
-const requestedChild = (rawChild && !ILLEGAL_KEY.test(rawChild) && rawChild.trim()) || null;
-const childKey       = requestedChild || rememberedChild() || DEFAULT_CHILD;
-if (requestedChild) rememberChild(requestedChild);
+// Already resolved by the boot script in <head> — it has to run before first paint
+// so the palette and the PWA identity are correct on the very first frame. Here we
+// only consume what it worked out.
+const BOOT     = window.__CHILD_BOOT__;
+const childKey = BOOT.key;
+const PROFILE  = BOOT.profile;   // null for an ad-hoc key (?child=ziv) — that is fine
 const FB_PATH  = `children/${childKey}`;
+
+// ── HOW WE SPEAK TO THIS CHILD ───────────────────────────────────────────────
+// Hebrew has no neutral second person, so every sentence addressed to the child
+// exists twice. The active form comes from, in order: what the child saved in
+// settings → their profile → feminine (which is what the app shipped as, so an
+// existing child whose settings predate this field keeps exactly the wording
+// they had yesterday).
+let gender = (PROFILE && PROFILE.gender) || 'f';
+
+const TXT = {
+  tipCurrent:     { f: 'כמה שווה הכסף שלך היום — אם היית מוכרת הכל עכשיו 💰',
+                    m: 'כמה שווה הכסף שלך היום — אם היית מוכר הכל עכשיו 💰' },
+  addCardTitle:   { f: '⚡ הוסיפי פעימת השקעה',        m: '⚡ הוסף פעימת השקעה' },
+  addBtn:         { f: '⚡ הוסיפי פעימה!',             m: '⚡ הוסף פעימה!' },
+  emptyState:     { f: 'הוסיפי את הפעימה הראשונה!',   m: 'הוסף את הפעימה הראשונה!' },
+  childNameLabel: { f: '👧 שם הילדה',                 m: '👦 שם הילד' },
+  yourNameLabel:  { f: '👧 מה השם שלך?',              m: '👦 מה השם שלך?' },
+  pickEmojiLabel: { f: "🌟 בחרי אמוג'י",              m: "🌟 בחר אמוג'י" },
+  welcome:        { f: 'ברוכה הבאה!',                 m: 'ברוך הבא!' },
+  setupIntro:     { f: 'בואי נגדיר את מסע ההשקעות שלך', m: 'בוא נגדיר את מסע ההשקעות שלך' },
+  startBtn:       { f: '✨ בואי נתחיל!',               m: '✨ בוא נתחיל!' },
+  errDate:        { f: 'בחרי תאריך',                  m: 'בחר תאריך' },
+  errAmount:      { f: 'הכניסי סכום חיובי',           m: 'הכנס סכום חיובי' },
+  errManual:      { f: 'לא ניתן לקבל מחיר אוטומטית. הכניסי ידנית.',
+                    m: 'לא ניתן לקבל מחיר אוטומטית. הכנס ידנית.' },
+  errGoalName:    { f: 'הכניסי שם ליעד',              m: 'הכנס שם ליעד' },
+  errGoalAmount:  { f: 'הכניסי סכום תקין',            m: 'הכנס סכום תקין' },
+  errName:        { f: 'הכניסי שם',                   m: 'הכנס שם' },
+  errYourName:    { f: 'הכניסי את שמך',               m: 'הכנס את שמך' },
+
+  eduInvest: {
+    f: 'השקעה היא כשאת נותנת את הכסף שלך לעבוד בשבילך! במקום שהכסף ישב בבית ולא יעשה כלום, הוא הולך לחברות גדולות שמייצרות מוצרים שאנשים אוהבים. עם הזמן, הכסף גדל ואת מרוויחה יותר ממה שנתת! 🚀',
+    m: 'השקעה היא כשאתה נותן את הכסף שלך לעבוד בשבילך! במקום שהכסף ישב בבית ולא יעשה כלום, הוא הולך לחברות גדולות שמייצרות מוצרים שאנשים אוהבים. עם הזמן, הכסף גדל ואתה מרוויח יותר ממה שנתת! 🚀' },
+  eduSP500: {
+    f: 'S&P 500 זה כמו "סל" שמכיל את <strong>500 החברות הגדולות ביותר באמריקה</strong> – כמו Apple, Google, ו-Amazon. כשאת משקיעה בו, את בעצם קונה חתיכה קטנה מכולן! זה הרבה יותר בטוח מלקנות מניה אחת. 📱💻🚗',
+    m: 'S&P 500 זה כמו "סל" שמכיל את <strong>500 החברות הגדולות ביותר באמריקה</strong> – כמו Apple, Google, ו-Amazon. כשאתה משקיע בו, אתה בעצם קונה חתיכה קטנה מכולן! זה הרבה יותר בטוח מלקנות מניה אחת. 📱💻🚗' },
+  eduProfit: {
+    f: 'רווח הוא הכסף הנוסף שאת מרוויחה! אם השקעת <strong>₪100</strong> והיום הם שווים <strong>₪115</strong>, אז הרווח שלך הוא <strong>₪15</strong>. הכסף עבד בשבילך ויצר עוד כסף בלי שעשית כלום! 💪',
+    m: 'רווח הוא הכסף הנוסף שאתה מרוויח! אם השקעת <strong>₪100</strong> והיום הם שווים <strong>₪115</strong>, אז הרווח שלך הוא <strong>₪15</strong>. הכסף עבד בשבילך ויצר עוד כסף בלי שעשית כלום! 💪' },
+  eduBeat: {
+    f: 'כל פעם שאת מביאה כסף להשקיע, זו "<strong>פעימה</strong>"! כמו פעימת לב 💓 — כל פעימה מחזקת את תיק ההשקעות שלך. השקעה בצעדים קטנים ורגולריים נקראת <strong>השקעה תקופתית</strong> וזו אחת האסטרטגיות הטובות ביותר!',
+    m: 'כל פעם שאתה מביא כסף להשקיע, זו "<strong>פעימה</strong>"! כמו פעימת לב 💓 — כל פעימה מחזקת את תיק ההשקעות שלך. השקעה בצעדים קטנים ורגולריים נקראת <strong>השקעה תקופתית</strong> וזו אחת האסטרטגיות הטובות ביותר!' },
+};
+
+function t(key) {
+  const entry = TXT[key];
+  if (!entry) { console.warn('missing string:', key); return ''; }
+  return entry[gender] || entry.f;
+}
+
+// Stamps every gendered node. Called on boot (before Firebase answers, so a boy
+// never sees a flash of feminine wording) and again whenever settings change.
+function applyGenderedText() {
+  document.querySelectorAll('[data-t]').forEach(el => { el.textContent = t(el.dataset.t); });
+  document.querySelectorAll('[data-t-html]').forEach(el => { el.innerHTML = t(el.dataset.tHtml); });
+  // The add button doubles as a progress indicator — never overwrite it mid-fetch.
+  const add = document.getElementById('addBtn');
+  if (add && !add.disabled) add.textContent = t('addBtn');
+  const start = document.getElementById('setupStartBtn');
+  if (start) start.textContent = t('startBtn');
+}
+
+// The emoji shortlist is per-child, so both pickers are rendered, not hardcoded.
+function renderEmojiPickers() {
+  const set = (PROFILE && PROFILE.emojiSet) || BOOT.profiles.yuval.emojiSet;
+  const cur = (settings && settings.emoji) || (PROFILE && PROFILE.emoji) || set[0];
+  ['setupEmojiPicker', 'settingsEmojiPicker'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.innerHTML = set
+      .map(e => `<button class="emoji-opt${e === cur ? ' selected' : ''}" data-e="${e}">${e}</button>`)
+      .join('');
+  });
+}
+
+function selectGender(pickerId, g) {
+  const p = document.getElementById(pickerId);
+  if (!p) return;
+  p.querySelectorAll('.gender-opt').forEach(b => b.classList.toggle('selected', b.dataset.g === g));
+}
+function readGender(pickerId) {
+  return document.querySelector(`#${pickerId} .gender-opt.selected`)?.dataset?.g || gender;
+}
+
+function applyNamePlaceholders() {
+  const ph = (PROFILE && PROFILE.label) || '';
+  ['setupName', 'settingsNameInput'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.placeholder = ph;
+  });
+}
 
 // ── STATE ────────────────────────────────────────────────────────────────────
 let investments  = [];
@@ -1261,6 +1460,13 @@ function showPriceBar(price, prev, asOf, intraday) {
 function spinning(on) { document.getElementById('refreshBtn').classList.toggle('spinning', on); }
 
 // ── CALCULATION ──────────────────────────────────────────────────────────────
+// #rrggbb → rgba(), so the chart fill can follow the child's palette.
+function hexToRgba(hex, alpha) {
+  const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex.trim());
+  if (!m) return `rgba(124,58,237,${alpha})`;
+  return `rgba(${parseInt(m[1],16)},${parseInt(m[2],16)},${parseInt(m[3],16)},${alpha})`;
+}
+
 function calcCurrent(inv) {
   if (!currentPrice || !inv.sp500Price) return null;
   return inv.amountNIS * (currentPrice / inv.sp500Price);
@@ -1338,7 +1544,7 @@ function updateGoalUI(currentVal) {
 function renderList() {
   const el = document.getElementById('investmentsList');
   if (!investments.length) {
-    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🌱</div><p>עוד אין פעימות.<br>הוסיפי את הפעימה הראשונה!</p></div>`;
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🌱</div><p>עוד אין פעימות.<br>${t('emptyState')}</p></div>`;
     return;
   }
   const sorted = [...investments].sort((a,b) => b.date.localeCompare(a.date));
@@ -1449,13 +1655,17 @@ function renderChart() {
     dataCur.push(+cumCur.toFixed(2));
   });
 
+  const css       = getComputedStyle(document.documentElement);
+  const primary   = css.getPropertyValue('--primary').trim() || '#7c3aed';
+  const primaryBg = hexToRgba(primary, 0.1);
+
   const ctx = document.getElementById('growthChart').getContext('2d');
   if (growthChart) growthChart.destroy();
   growthChart = new Chart(ctx, {
     type: 'line',
     data: { labels, datasets: [
       { label:'הושקע',     data: dataInv, borderColor:'#94a3b8', backgroundColor:'rgba(148,163,184,0.08)', borderDash:[5,4], fill:true, tension:0.4, pointRadius:4, pointBackgroundColor:'#94a3b8' },
-      { label:'שווי נוכחי', data: dataCur, borderColor:'#7c3aed', backgroundColor:'rgba(124,58,237,0.1)',   fill:true, tension:0.4, pointRadius:4, pointBackgroundColor:'#7c3aed' },
+      { label:'שווי נוכחי', data: dataCur, borderColor:primary, backgroundColor:primaryBg, fill:true, tension:0.4, pointRadius:4, pointBackgroundColor:primary },
     ]},
     options: {
       responsive: true,
@@ -1477,8 +1687,8 @@ async function addInvestment() {
   const amountVal = parseFloat(document.getElementById('fAmount').value);
   const manualVal = parseFloat(document.getElementById('fManual').value || '0');
 
-  if (!dateVal)                     { alert('בחרי תאריך'); return; }
-  if (!amountVal || amountVal <= 0) { alert('הכניסי סכום חיובי'); return; }
+  if (!dateVal)                     { alert(t('errDate')); return; }
+  if (!amountVal || amountVal <= 0) { alert(t('errAmount')); return; }
   if (dateVal > todayStr())         { alert('לא ניתן לבחור תאריך עתידי'); return; }
 
   setAdding(true);
@@ -1495,7 +1705,7 @@ async function addInvestment() {
     else {
       document.getElementById('apiAlert').style.display    = 'block';
       document.getElementById('manualGroup').style.display = 'block';
-      alert('לא ניתן לקבל מחיר אוטומטית. הכניסי ידנית.');
+      alert(t('errManual'));
       return;
     }
   }
@@ -1513,7 +1723,7 @@ async function addInvestment() {
 function setAdding(on) {
   const btn = document.getElementById('addBtn');
   btn.disabled    = on;
-  btn.textContent = on ? '⏳ מביא מחיר...' : '⚡ הוסיפי פעימה!';
+  btn.textContent = on ? '⏳ מביא מחיר...' : t('addBtn');
 }
 
 // ── DELETE ────────────────────────────────────────────────────────────────────
@@ -1544,8 +1754,8 @@ async function saveInlineEdit(id) {
   let   sp500Val  = parseFloat(document.getElementById('ie-sp500').value);
   const note      = document.getElementById('ie-note').value.trim();
 
-  if (!dateVal)                     { alert('בחרי תאריך'); return; }
-  if (!amountVal || amountVal <= 0) { alert('הכניסי סכום חיובי'); return; }
+  if (!dateVal)                     { alert(t('errDate')); return; }
+  if (!amountVal || amountVal <= 0) { alert(t('errAmount')); return; }
   if (dateVal > todayStr())         { alert('לא ניתן לבחור תאריך עתידי'); return; }
 
   const inv = investments.find(i => i.id === id);
@@ -1579,8 +1789,8 @@ function saveGoalModal() {
   const name   = document.getElementById('goalNameInput').value.trim();
   const amount = parseFloat(document.getElementById('goalAmountInput').value);
   const emoji  = document.getElementById('goalEmojiInput').value.trim() || '🎯';
-  if (!name)                { alert('הכניסי שם ליעד'); return; }
-  if (!amount || amount<=0) { alert('הכניסי סכום תקין'); return; }
+  if (!name)                { alert(t('errGoalName')); return; }
+  if (!amount || amount<=0) { alert(t('errGoalAmount')); return; }
   goal = { name, amount, emoji };
   saveGoalS(); closeModal('goalModal'); updateUI();
 }
@@ -1588,19 +1798,22 @@ function saveGoalModal() {
 // ── SETTINGS ──────────────────────────────────────────────────────────────────
 function openSettingsModal() {
   document.getElementById('settingsNameInput').value = settings?.name || '';
-  const curEmoji = settings?.emoji || '⭐';
-  document.querySelectorAll('#settingsEmojiPicker .emoji-opt').forEach(btn => {
-    btn.classList.toggle('selected', btn.dataset.e === curEmoji);
-  });
+  renderEmojiPickers();
+  selectGender('settingsGenderPicker', gender);
   openModal('settingsModal');
 }
 
 function saveSettingsModal() {
   const name  = document.getElementById('settingsNameInput').value.trim();
-  const emoji = document.querySelector('#settingsEmojiPicker .emoji-opt.selected')?.dataset?.e || '⭐';
-  if (!name) { alert('הכניסי שם'); return; }
-  settings = { name, emoji };
-  saveSett(); closeModal('settingsModal'); updateUI();
+  const fallbackEmoji = (PROFILE && PROFILE.emoji) || '⭐';
+  const emoji = document.querySelector('#settingsEmojiPicker .emoji-opt.selected')?.dataset?.e || fallbackEmoji;
+  if (!name) { alert(t('errName')); return; }
+  gender   = readGender('settingsGenderPicker');
+  settings = { name, emoji, gender };
+  saveSett();
+  applyGenderedText();
+  closeModal('settingsModal');
+  updateUI();
 }
 
 function confirmClearData() {
@@ -1613,11 +1826,14 @@ function finishSetup() {
   const name      = document.getElementById('setupName').value.trim();
   const goalName  = document.getElementById('setupGoalName').value.trim();
   const goalAmt   = parseFloat(document.getElementById('setupGoalAmount').value);
-  const emoji     = document.querySelector('#setupEmojiPicker .emoji-opt.selected')?.dataset?.e || '⭐';
+  const fallbackEmoji = (PROFILE && PROFILE.emoji) || '⭐';
+  const emoji     = document.querySelector('#setupEmojiPicker .emoji-opt.selected')?.dataset?.e || fallbackEmoji;
 
-  if (!name) { alert('הכניסי את שמך'); return; }
-  settings = { name, emoji };
+  if (!name) { alert(t('errYourName')); return; }
+  gender   = readGender('setupGenderPicker');
+  settings = { name, emoji, gender };
   saveSett();
+  applyGenderedText();
 
   if (goalName && goalAmt > 0) {
     goal = { name: goalName, amount: goalAmt, emoji: '🎯' };
@@ -1632,13 +1848,15 @@ function finishSetup() {
 }
 
 // ── EMOJI PICKERS ─────────────────────────────────────────────────────────────
-function initEmojiPickers() {
-  document.querySelectorAll('.emoji-picker').forEach(picker => {
-    picker.querySelectorAll('.emoji-opt').forEach(btn => {
-      btn.addEventListener('click', () => {
-        picker.querySelectorAll('.emoji-opt').forEach(b => b.classList.remove('selected'));
-        btn.classList.add('selected');
-      });
+function initPickers() {
+  // Delegated on purpose: the emoji list is re-rendered per child, and listeners
+  // bound to the individual buttons would be thrown away with them.
+  document.querySelectorAll('.emoji-picker, .gender-picker').forEach(picker => {
+    picker.addEventListener('click', e => {
+      const btn = e.target.closest('.emoji-opt, .gender-opt');
+      if (!btn || !picker.contains(btn)) return;
+      picker.querySelectorAll('.emoji-opt, .gender-opt').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
     });
   });
 }
@@ -1676,7 +1894,11 @@ function toggleEduItem(header) {
 
 // ── CELEBRATE ─────────────────────────────────────────────────────────────────
 function celebrate() {
-  const colors = ['#7c3aed','#f59e0b','#10b981','#ef4444','#ec4899','#06b6d4','#a855f7'];
+  const css     = getComputedStyle(document.documentElement);
+  const themed  = ['--primary','--primary-2','--secondary','--secondary-2']
+                    .map(v => css.getPropertyValue(v).trim())
+                    .filter(Boolean);
+  const colors  = themed.concat(['#10b981','#ef4444','#06b6d4']);
   for (let i = 0; i < 45; i++) {
     setTimeout(() => {
       const el = document.createElement('div');
@@ -1721,8 +1943,17 @@ document.addEventListener('click', () => tipPopup.classList.remove('show'));
 
 // ── BOOT ──────────────────────────────────────────────────────────────────────
 document.getElementById('fDate').value = todayStr();
-initEmojiPickers();
+initPickers();
 initChartFilters();
+
+// Paint this child's wording and choices immediately. Firebase is a network round
+// trip away, and until it answers the markup still carries the shipped defaults —
+// without this, Aviv would read a feminine screen for as long as that takes.
+applyGenderedText();
+applyNamePlaceholders();
+renderEmojiPickers();
+selectGender('setupGenderPicker',    gender);
+selectGender('settingsGenderPicker', gender);
 
 // האזנה לשינויים בזמן אמת מכל מכשיר
 db.ref(FB_PATH).on('value', snap => {
@@ -1731,6 +1962,15 @@ db.ref(FB_PATH).on('value', snap => {
   investments = data.investments ? Object.values(data.investments) : [];
   settings    = data.settings    || null;
   goal        = data.goal        || null;
+
+  // settings.gender arrived after the first children existed, so an older settings
+  // object simply has no such key — fall back to the profile, then to feminine,
+  // which is the wording this app shipped with.
+  gender = (settings && settings.gender) || (PROFILE && PROFILE.gender) || 'f';
+  applyGenderedText();
+  renderEmojiPickers();
+  selectGender('setupGenderPicker',    gender);
+  selectGender('settingsGenderPicker', gender);
 
   if (!fbReady) {
     fbReady = true;
