@@ -1165,6 +1165,15 @@
     </div>
   </div>
 
+  <!-- Could not read the child's node -->
+  <div class="setup-overlay" id="readFailOverlay">
+    <div class="setup-card">
+      <div class="setup-icon">📡</div>
+      <h2 id="readFailTitle"></h2>
+      <p id="readFailBody"></p>
+    </div>
+  </div>
+
   <!-- No personal link on this device -->
   <div class="setup-overlay" id="noLinkOverlay">
     <div class="setup-card">
@@ -1358,10 +1367,21 @@ function invToObj(arr) {
   return obj;
 }
 
-// Every write is guarded: with no key there is no path, and a save must not invent one.
-function saveInv()  { if (!FB_PATH) return; db.ref(`${FB_PATH}/investments`).set(invToObj(investments)); }
-function saveSett() { if (!FB_PATH) return; db.ref(`${FB_PATH}/settings`).set(settings); }
-function saveGoalS(){ if (!FB_PATH) return; db.ref(`${FB_PATH}/goal`).set(goal); }
+// A rejected write — a security rule, a dropped connection — resolves to a rejected
+// promise and nothing else. Unhandled, a child's beat just disappears: the screen
+// still shows it, because the local array was already updated, and it is gone on the
+// next reload with nothing ever having said so. Say so.
+function writeFailed(what, err) {
+  console.error('save failed:', what, err);
+  alert('השמירה נכשלה — ' + what + '.\nכדאי לצלם מסך ולהראות לאבא.\n\n(' +
+        ((err && err.message) || 'שגיאה לא ידועה') + ')');
+}
+
+// Every write is guarded twice: with no key there is no path, and a save must not
+// invent one; and whatever the server says is surfaced rather than swallowed.
+function saveInv()  { if (!FB_PATH) return; db.ref(`${FB_PATH}/investments`).set(invToObj(investments)).catch(e => writeFailed('הפעימה לא נשמרה', e)); }
+function saveSett() { if (!FB_PATH) return; db.ref(`${FB_PATH}/settings`).set(settings).catch(e => writeFailed('ההגדרות לא נשמרו', e)); }
+function saveGoalS(){ if (!FB_PATH) return; db.ref(`${FB_PATH}/goal`).set(goal).catch(e => writeFailed('היעד לא נשמר', e)); }
 
 // ── MARKET DATA: STATIC JSON, SAME ORIGIN ────────────────────────────
 // Yahoo Finance and edge.boi.gov.il send no CORS headers, so the browser cannot
@@ -2013,6 +2033,16 @@ db.ref(FB_PATH).on('value', snap => {
     // עדכון מכשיר אחר — רענן UI בלי לקרוא API מחדש
     updateUI();
   }
+}, err => {
+  // Never fall through to the setup wizard here: an unreadable node looks exactly
+  // like an empty one, and the wizard would offer to write over data that exists.
+  console.error('read failed:', err);
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('setupOverlay').classList.remove('open');
+  document.getElementById('readFailTitle').textContent = 'לא הצלחנו לטעון את הנתונים';
+  document.getElementById('readFailBody').textContent =
+    'הנתונים לא נמחקו — פשוט לא הצלחנו להגיע אליהם כרגע. נסו שוב עוד רגע, ואם זה חוזר קראו לאבא.';
+  document.getElementById('readFailOverlay').classList.add('open');
 });
 
 }  // /if (FB_PATH)
