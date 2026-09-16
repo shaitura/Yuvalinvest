@@ -13,22 +13,31 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="מסע ההשקעות" id="appTitleMeta">
 
-  <!-- ===== WHICH CHILD (runs before first paint) =================================
-       Every child gets their own link, their own look and their own data:
-         ?child=<key>  →  Firebase children/<key>
-       This block resolves the key and stamps that child's palette and PWA identity
-       onto the document BEFORE the body renders — doing it later would flash the
-       default (Yuval's purple) on Aviv's screen on every single load.
-       Adding a sibling = one entry in CHILDREN below + a manifest-<key>.json.
+  <!-- ===== WHO IS THIS, AND WHICH ONE ARE THEY? ================================
+       Two separate things, deliberately kept apart:
+
+         ?look=<name>   PUBLIC.  Palette, wording, icon, PWA identity. Safe to ship
+                        in this file, because knowing it grants nothing.
+         ?child=<key>   SECRET.  The Firebase path, children/<key>.
+
+       The secret must NEVER appear in this file or any committed manifest. This page
+       is public and so is the repo, so anything the page knows, a reader knows too —
+       a key written here would be exactly as guessable as the name it replaced.
+       It arrives only from the URL, and is then remembered per look.
+
+       Per look, not globally: localStorage is shared across the whole origin, so one
+       slot meant the last child opened overwrote the other. Two siblings could not
+       keep the app on one tablet. yuvalinvest.child.<look> gives each their own.
+
+       A full link looks like:  ?child=<secret>&look=aviv
+       An installed PWA opens:  ?look=aviv          (secret comes from storage)
        ========================================================================== -->
   <script>
   (function () {
-    var CHILDREN = {
+    var LOOKS = {
       yuval: {
         label: 'יובלי', gender: 'f', emoji: '⭐',
-        // Yuval keeps the original manifest.json so her already-installed PWA is
-        // never disturbed — changing an installed app's manifest URL can rename it.
-        manifest: 'manifest.json', icon: 'icon.svg', appTitle: 'מסע ההשקעות',
+        manifest: 'manifest-yuval.json', icon: 'icon.svg', appTitle: 'מסע ההשקעות של יובלי',
         emojiSet: ['⭐','🌟','💫','🦋','🌈','🚀','🦄','🐼','🦊'],
         theme: { primary:'#7c3aed', primaryLight:'#a78bfa', primary2:'#a855f7',
                  primaryRgb:'124,58,237', tint:'#faf5ff', tintBorder:'#ede9fe',
@@ -46,30 +55,28 @@
       }
     };
 
-    var DEFAULT_CHILD = 'yuval';
-    var STORAGE_KEY   = 'yuvalinvest.child';
+    // A look to fall back to for colours only. It is not, and must never become,
+    // a data key — there is no default child.
+    var FALLBACK_LOOK = 'yuval';
     var ILLEGAL_KEY   = /[.#$\[\]\/]/;   // characters Firebase paths reject
 
-    // Resolution order, most explicit first:
-    //   1. ?child= in the URL  — a shared link always wins
-    //   2. this device's remembered child — an installed PWA whose start_url has no
-    //      query string would otherwise always land on the default
-    //   3. DEFAULT_CHILD — a brand-new device that has never opened a link
-    var raw = null;
-    try { raw = new URLSearchParams(location.search).get('child'); } catch (e) {}
-    var requested = (raw && !ILLEGAL_KEY.test(raw) && raw.trim()) || null;
-    var remembered = null;
-    // localStorage throws in private mode or when site data is blocked — never let
-    // that take the app down, just fall through to the default.
-    try { remembered = localStorage.getItem(STORAGE_KEY) || null; } catch (e) {}
-    var key = requested || remembered || DEFAULT_CHILD;
-    if (requested) { try { localStorage.setItem(STORAGE_KEY, requested); } catch (e) {} }
+    function param(name) {
+      try { return new URLSearchParams(location.search).get(name); } catch (e) { return null; }
+    }
+    // localStorage throws in private mode or when site data is blocked — every read
+    // and write is wrapped, and the app still renders without it.
+    function get(k) { try { return localStorage.getItem(k) || null; } catch (e) { return null; } }
+    function set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+    function clean(v) { return (v && !ILLEGAL_KEY.test(v) && v.trim()) || null; }
 
-    // An unknown key is a real, supported case (open ?child=ziv and the wizard runs).
-    // It gets its own Firebase path and its own settings; only the look and the PWA
-    // identity fall back to the default, because those live in files.
-    var profile = CHILDREN[key] || null;
-    var theme   = (profile && profile.theme) || CHILDREN[DEFAULT_CHILD].theme;
+    var look  = clean(param('look'))  || get('yuvalinvest.look');
+    var child = clean(param('child')) || (look ? get('yuvalinvest.child.' + look) : null);
+
+    if (look)          set('yuvalinvest.look', look);
+    if (child && look) set('yuvalinvest.child.' + look, child);
+
+    var profile = (look && LOOKS[look]) || null;
+    var theme   = (profile && profile.theme) || LOOKS[FALLBACK_LOOK].theme;
 
     var root = document.documentElement;
     root.style.setProperty('--primary',       theme.primary);
@@ -97,7 +104,8 @@
       if (t) t.setAttribute('content', profile.appTitle);
     }
 
-    window.__CHILD_BOOT__ = { key: key, profile: profile, profiles: CHILDREN, theme: theme };
+    window.__CHILD_BOOT__ = { key: child, look: look, profile: profile,
+                              looks: LOOKS, fallbackLook: FALLBACK_LOOK, theme: theme };
   })();
   </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -1157,6 +1165,15 @@
     </div>
   </div>
 
+  <!-- No personal link on this device -->
+  <div class="setup-overlay" id="noLinkOverlay">
+    <div class="setup-card">
+      <div class="setup-icon">🔑</div>
+      <h2>צריך את הקישור האישי</h2>
+      <p>הדף הזה נפתח רק דרך הקישור האישי שלך.<br>בקש אותו מאבא, ואז הוסף אותו למסך הבית.</p>
+    </div>
+  </div>
+
   <!-- First-time setup overlay -->
   <div class="setup-overlay" id="setupOverlay">
     <div class="setup-card">
@@ -1219,9 +1236,9 @@ const db = firebase.database();
 // so the palette and the PWA identity are correct on the very first frame. Here we
 // only consume what it worked out.
 const BOOT     = window.__CHILD_BOOT__;
-const childKey = BOOT.key;
-const PROFILE  = BOOT.profile;   // null for an ad-hoc key (?child=ziv) — that is fine
-const FB_PATH  = `children/${childKey}`;
+const childKey = BOOT.key;       // null when this device has never opened a link
+const PROFILE  = BOOT.profile;   // null for an unknown look — colours fall back
+const FB_PATH  = childKey ? `children/${childKey}` : null;
 
 // ── HOW WE SPEAK TO THIS CHILD ───────────────────────────────────────────────
 // Hebrew has no neutral second person, so every sentence addressed to the child
@@ -1286,7 +1303,7 @@ function applyGenderedText() {
 
 // The emoji shortlist is per-child, so both pickers are rendered, not hardcoded.
 function renderEmojiPickers() {
-  const set = (PROFILE && PROFILE.emojiSet) || BOOT.profiles.yuval.emojiSet;
+  const set = (PROFILE && PROFILE.emojiSet) || BOOT.looks[BOOT.fallbackLook].emojiSet;
   const cur = (settings && settings.emoji) || (PROFILE && PROFILE.emoji) || set[0];
   ['setupEmojiPicker', 'settingsEmojiPicker'].forEach(id => {
     const el = document.getElementById(id);
@@ -1341,9 +1358,10 @@ function invToObj(arr) {
   return obj;
 }
 
-function saveInv()  { db.ref(`${FB_PATH}/investments`).set(invToObj(investments)); }
-function saveSett() { db.ref(`${FB_PATH}/settings`).set(settings); }
-function saveGoalS(){ db.ref(`${FB_PATH}/goal`).set(goal); }
+// Every write is guarded: with no key there is no path, and a save must not invent one.
+function saveInv()  { if (!FB_PATH) return; db.ref(`${FB_PATH}/investments`).set(invToObj(investments)); }
+function saveSett() { if (!FB_PATH) return; db.ref(`${FB_PATH}/settings`).set(settings); }
+function saveGoalS(){ if (!FB_PATH) return; db.ref(`${FB_PATH}/goal`).set(goal); }
 
 // ── MARKET DATA: STATIC JSON, SAME ORIGIN ────────────────────────────
 // Yahoo Finance and edge.boi.gov.il send no CORS headers, so the browser cannot
@@ -1955,6 +1973,13 @@ renderEmojiPickers();
 selectGender('setupGenderPicker',    gender);
 selectGender('settingsGenderPicker', gender);
 
+// No key means this device was never given a link. Show that, and do not touch
+// Firebase at all — connecting without a path is how stray nodes get created.
+if (!FB_PATH) {
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('noLinkOverlay').classList.add('open');
+} else {
+
 // האזנה לשינויים בזמן אמת מכל מכשיר
 db.ref(FB_PATH).on('value', snap => {
   const data = snap.val() || {};
@@ -1989,6 +2014,8 @@ db.ref(FB_PATH).on('value', snap => {
     updateUI();
   }
 });
+
+}  // /if (FB_PATH)
 </script>
 </body>
 </html>
