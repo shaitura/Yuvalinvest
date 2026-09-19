@@ -1,9 +1,9 @@
 {
-  "updatedAt": "2026-09-18T17:04:56Z",
+  "updatedAt": "2026-09-19T16:30:23Z",
   "sp500": {
-    "price": 7620.48,
-    "prevClose": 7637.76,
-    "asOf": "2026-09-18",
+    "price": 7650.5,
+    "prevClose": 7650.5,
+    "asOf": "2026-09-19",
     "intraday": true,
     "source": "cboe-live"
   },
