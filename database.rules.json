@@ -1,0 +1,19 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "children": {
+      "$child": {
+        ".read": true,
+        ".write": true,
+        "investments": {
+          "$id": {
+            "note": {
+              ".validate": "!newData.exists() || (newData.isString() && newData.val().length <= 80 && !newData.val().matches(/[<>]/))"
+            }
+          }
+        }
+      }
+    }
+  }
+}
