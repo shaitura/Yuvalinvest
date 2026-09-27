@@ -2,6 +2,12 @@
 <html dir="rtl" lang="he">
 <head>
   <meta charset="UTF-8">
+  <!-- CSP (added 2026-09-27): the page stays public, but this cuts the pivot path. Even if an
+       injected payload slipped past output-escaping, connect-src/img-src block it from
+       exfiltrating anything (e.g. a same-origin family-tracker token) to an attacker host.
+       Static GitHub Pages can't issue per-request nonces, and the app relies on inline scripts,
+       so script-src keeps 'unsafe-inline'; output-escaping is the primary XSS defense. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.googleapis.com https://www.gstatic.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>מסע ההשקעות ✨</title>
   <!-- PWA -->
@@ -1354,6 +1360,13 @@ let fbReady      = false;
 // ── FORMAT HELPERS ───────────────────────────────────────────────────────────
 const fmt    = n => '₪' + Number(n).toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const fmtNum = n =>       Number(n).toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// Escape DB-derived strings before they enter HTML. Notes/fields are attacker-writable (open
+// RTDB), and unescaped they become stored XSS on shaitura.github.io — the SAME origin as
+// family-tracker, so an injected script could read its Firebase token from localStorage.
+// Added 2026-09-27 (OWASP A03/A05).
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+// Firebase push-keys are [A-Za-z0-9_-]; strip anything else before an id enters an inline handler.
+const sid = s => String(s == null ? '' : s).replace(/[^A-Za-z0-9_-]/g, '');
 const todayStr = () => new Date().toISOString().split('T')[0];
 
 function fmtDate(s) {
@@ -1599,25 +1612,25 @@ function renderList() {
           <div class="inv-edit-fields">
             <div class="inv-edit-row">
               <label>📅 תאריך</label>
-              <input type="date" id="ie-date" value="${inv.date}" />
+              <input type="date" id="ie-date" value="${esc(inv.date)}" />
             </div>
             <div class="inv-edit-row">
               <label>💰 סכום (₪)</label>
-              <input type="number" id="ie-amount" value="${inv.amountNIS}" min="1" step="any" inputmode="decimal" />
+              <input type="number" id="ie-amount" value="${esc(inv.amountNIS)}" min="1" step="any" inputmode="decimal" />
             </div>
             <div class="inv-edit-row">
               <label>📝 מאיפה הכסף?</label>
-              <input type="text" id="ie-note" value="${inv.note || ''}" placeholder="מתנה מסבא, דמי כיס..." maxlength="80" />
+              <input type="text" id="ie-note" value="${esc(inv.note || '')}" placeholder="מתנה מסבא, דמי כיס..." maxlength="80" />
             </div>
             <div class="inv-edit-row">
               <label>📊 מחיר S&P 500 בתאריך הקנייה</label>
-              <input type="number" id="ie-sp500" value="${inv.sp500Price}" min="1" step="0.01" />
+              <input type="number" id="ie-sp500" value="${esc(inv.sp500Price)}" min="1" step="0.01" />
               <span class="inv-sp500-hint">שינוי תאריך יטען מחיר אוטומטית בשמירה</span>
             </div>
           </div>
           <div class="inv-edit-actions">
             <button class="btn-edit-cancel" onclick="cancelEdit()">ביטול</button>
-            <button class="btn-edit-save" id="ie-save-${inv.id}" onclick="saveInlineEdit('${inv.id}')">💾 שמור</button>
+            <button class="btn-edit-save" id="ie-save-${sid(inv.id)}" onclick="saveInlineEdit('${sid(inv.id)}')">💾 שמור</button>
           </div>
         </div>`;
     }
@@ -1634,15 +1647,15 @@ function renderList() {
         <div class="inv-info">
           <div class="inv-date">📅 ${fmtDate(inv.date)}</div>
           <div class="inv-amount">הושקע: ${fmt(inv.amountNIS)}</div>
-          ${inv.note ? `<div class="inv-note">📝 ${inv.note}</div>` : ''}
+          ${inv.note ? `<div class="inv-note">📝 ${esc(inv.note)}</div>` : ''}
           <div class="inv-sp500">מדד בקנייה: $${fmtNum(inv.sp500Price)}</div>
         </div>
         <div class="inv-right">
           <div class="inv-current">${cur !== null ? fmt(cur) : '—'}</div>
           <span class="return-badge ${badgeCls}">${badgeTxt}</span>
           <div class="inv-actions">
-            <button class="icon-btn" onclick="startEdit('${inv.id}')" title="ערוך">✏️</button>
-            <button class="icon-btn del" onclick="deleteInv('${inv.id}')" title="מחק">🗑️</button>
+            <button class="icon-btn" onclick="startEdit('${sid(inv.id)}')" title="ערוך">✏️</button>
+            <button class="icon-btn del" onclick="deleteInv('${sid(inv.id)}')" title="מחק">🗑️</button>
           </div>
         </div>
       </div>`;
