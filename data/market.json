@@ -1,7 +1,7 @@
 {
-  "updatedAt": "2026-10-16T17:24:01Z",
+  "updatedAt": "2026-10-16T23:38:16Z",
   "sp500": {
-    "price": 7662.86,
+    "price": 7659.44,
     "prevClose": 7744.06,
     "asOf": "2026-10-16",
     "intraday": true,
