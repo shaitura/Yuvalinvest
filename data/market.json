@@ -1,15 +1,15 @@
 {
-  "updatedAt": "2026-10-23T00:00:03Z",
+  "updatedAt": "2026-10-23T17:52:30Z",
   "sp500": {
-    "price": 7663.43,
-    "prevClose": 7757.17,
-    "asOf": "2026-10-22",
+    "price": 7629.64,
+    "prevClose": 7663.43,
+    "asOf": "2026-10-23",
     "intraday": true,
     "source": "cboe-live"
   },
   "usdIls": {
-    "rate": 3.107,
-    "asOf": "2026-10-22",
+    "rate": 3.112,
+    "asOf": "2026-10-23",
     "source": "boi"
   }
 }
