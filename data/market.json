@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-24T05:20:44Z",
+  "updatedAt": "2026-11-24T23:00:54Z",
   "sp500": {
     "price": 7237.17,
     "prevClose": 6910.39,
@@ -8,8 +8,8 @@
     "source": "cboe-close"
   },
   "usdIls": {
-    "rate": 3.343,
-    "asOf": "2026-11-23",
+    "rate": 3.345,
+    "asOf": "2026-11-24",
     "source": "boi"
   }
 }
