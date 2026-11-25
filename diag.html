@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html dir="ltr" lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yuvalinvest - בדיקה</title>
+<!--
+  Diagnostic page for "the app opens empty, with a star" (25/11/2026).
+  Run it on the device that shows the problem and screenshot the result.
+  Deliberately ES5 (var, no arrows, no ?.) so it still runs on an old
+  browser that cannot parse the app itself. Never prints a data key: only
+  whether one is stored and how long it is.
+-->
+<style>
+  body { font: 15px/1.45 system-ui, sans-serif; margin: 0; padding: 16px; background: #f4f4f8; color: #222; }
+  h1 { font-size: 18px; margin: 0 0 12px; }
+  .row { background: #fff; border-radius: 10px; padding: 10px 12px; margin: 8px 0; word-break: break-word; }
+  .ok { border-left: 6px solid #16a34a; } .bad { border-left: 6px solid #dc2626; } .info { border-left: 6px solid #94a3b8; }
+  .k { font-weight: 600; } noscript div { background: #dc2626; color: #fff; padding: 14px; border-radius: 10px; font-weight: 700; }
+</style>
+</head>
+<body>
+<h1>בדיקת Yuvalinvest · v1</h1>
+<noscript><div>JavaScript is OFF in this browser. This is the cause: the app cannot run without it.</div></noscript>
+<div id="out"></div>
+<script>
+var out = document.getElementById('out');
+function row(cls, k, v) {
+  var d = document.createElement('div');
+  d.className = 'row ' + cls;
+  d.innerHTML = '<span class="k"></span> <span class="v"></span>';
+  d.firstChild.textContent = k;
+  d.lastChild.textContent = v;
+  out.appendChild(d);
+  return d;
+}
+function setRow(d, cls, v) { d.className = 'row ' + cls; d.lastChild.textContent = v; }
+
+row('ok', 'JavaScript:', 'runs');
+row('info', 'Browser:', navigator.userAgent);
+row('info', 'Opened as installed app:',
+    (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ? 'yes' : 'no (browser tab)');
+row('info', 'Time:', new Date().toString());
+
+// Can this browser parse the app's syntax at all?
+function canParse(src) { try { new Function(src); return true; } catch (e) { return false; } }
+var syn = { 'optional chaining ?.': 'var a; return a?.b;', 'arrow =>': 'return (x => x)(1);',
+            'const/let': 'const a = 1; let b = 2; return a + b;', 'template `${}`': 'var a = 1; return `${a}`;',
+            'async/await': 'return (async function () { await 1; })();' };
+var missing = [];
+for (var n in syn) if (!canParse(syn[n])) missing.push(n);
+row(missing.length ? 'bad' : 'ok', 'Syntax support:', missing.length ? 'MISSING: ' + missing.join(', ') : 'all supported');
+
+// Stored keys - presence and length only, never the value.
+var keys = {};
+try {
+  row('info', 'Stored look:', localStorage.getItem('yuvalinvest.look') || '(none)');
+  ['yuval', 'aviv'].forEach(function (l) {
+    var v = localStorage.getItem('yuvalinvest.child.' + l);
+    keys[l] = v;
+    row(v ? 'ok' : 'bad', 'Key for ' + l + ':', v ? 'stored (' + v.length + ' chars, starts ' + v.slice(0, 2) + '..)' : 'NOT stored');
+  });
+} catch (e) { row('bad', 'Local storage:', 'blocked: ' + e.message); }
+
+// Does the network serve the new app and its files?
+function check(label, url, test) {
+  var d = row('info', label, 'checking...');
+  var x = new XMLHttpRequest();
+  x.open('GET', url + (url.indexOf('?') < 0 ? '?' : '&') + 't=' + Date.now());
+  x.timeout = 15000;
+  x.onload = function () {
+    var good = x.status === 200 && (!test || test(x.responseText));
+    setRow(d, good ? 'ok' : 'bad', 'HTTP ' + x.status + ', ' + x.responseText.length + ' bytes' + (test ? (good ? ', new version' : ', OLD version') : ''));
+  };
+  x.onerror = function () { setRow(d, 'bad', 'network error'); };
+  x.ontimeout = function () { setRow(d, 'bad', 'timeout'); };
+  x.send();
+}
+check('App page:', 'index.html', function (t) { return t.indexOf('showLoadFail') >= 0; });
+check('Firebase file:', 'vendor/firebase-10.12.0/firebase-database-compat.js');
+check('Chart file:', 'vendor/chartjs-4.4.0/chart.umd.js');
+check('Market data:', 'data/market.json');
+
+// Load Firebase and read each stored child's beat count.
+function loadScript(src, cb) {
+  var s = document.createElement('script');
+  s.src = src; s.onload = function () { cb(null); }; s.onerror = function () { cb(new Error('could not load ' + src)); };
+  document.head.appendChild(s);
+}
+var fbRow = row('info', 'Database:', 'loading library...');
+loadScript('vendor/firebase-10.12.0/firebase-app-compat.js', function (e1) {
+  if (e1) return setRow(fbRow, 'bad', e1.message);
+  loadScript('vendor/firebase-10.12.0/firebase-database-compat.js', function (e2) {
+    if (e2) return setRow(fbRow, 'bad', e2.message);
+    try {
+      firebase.initializeApp({ apiKey: 'AIzaSyDzNyGvg18NgWbxgmInZx6P0mdAl8H82TQ',
+        databaseURL: 'https://yuvalinvest-3c538-default-rtdb.europe-west1.firebasedatabase.app',
+        projectId: 'yuvalinvest-3c538' });
+    } catch (e) { return setRow(fbRow, 'bad', 'init failed: ' + e.message); }
+    setRow(fbRow, 'ok', 'library loaded');
+    ['yuval', 'aviv'].forEach(function (l) {
+      if (!keys[l]) return;
+      var d = row('info', 'Data for ' + l + ':', 'reading...');
+      var done = false;
+      setTimeout(function () { if (!done) setRow(d, 'bad', 'no answer after 15s'); }, 15000);
+      firebase.database().ref('children/' + keys[l] + '/investments').once('value').then(function (s) {
+        done = true; setRow(d, s.numChildren() ? 'ok' : 'bad', s.numChildren() + ' beats');
+      }, function (e) { done = true; setRow(d, 'bad', 'read refused: ' + e.message); });
+    });
+  });
+});
+</script>
+</body>
+</html>
