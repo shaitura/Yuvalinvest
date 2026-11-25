@@ -7,7 +7,7 @@
        exfiltrating anything (e.g. a same-origin family-tracker token) to an attacker host.
        Static GitHub Pages can't issue per-request nonces, and the app relies on inline scripts,
        so script-src keeps 'unsafe-inline'; output-escaping is the primary XSS defense. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.googleapis.com https://www.gstatic.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.googleapis.com https://www.gstatic.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>מסע ההשקעות ✨</title>
   <!-- PWA -->
@@ -113,8 +113,40 @@
     window.__CHILD_BOOT__ = { key: child, look: look, profile: profile,
                               looks: LOOKS, fallbackLook: FALLBACK_LOOK, theme: theme };
   })();
+
+  // ── A PAGE THAT DIDN'T FINISH LOADING MUST SAY SO ──────────────────────────
+  // If a library fails to load or the main script throws before the first data
+  // arrives, the page used to sit on its empty HTML template: a star, no name,
+  // zero beats. That reads exactly like "all the data was deleted" (25/11/2026,
+  // two phones). Until the app is ready, any uncaught error shows the read-fail
+  // card instead, with the technical text so a screenshot tells us the cause.
+  window.__APP_READY__ = false;
+  window.showLoadFail = function (detail) {
+    function show() {
+      var o = document.getElementById('readFailOverlay');
+      if (!o) return;
+      var app = document.getElementById('app');
+      if (app) app.style.display = 'none';
+      var s = document.getElementById('setupOverlay');
+      if (s) s.classList.remove('open');
+      document.getElementById('readFailTitle').textContent = 'לא מצליחים להתחבר כרגע';
+      document.getElementById('readFailBody').textContent =
+        'הנתונים שמורים ולא נמחקו. נסו לסגור ולפתוח שוב עוד רגע, ואם זה חוזר צלמו את המסך והראו לאבא.';
+      document.getElementById('readFailDetail').textContent = detail || '';
+      o.classList.add('open');
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', show);
+    else show();
+  };
+  window.addEventListener('error', function (e) {
+    if (window.__APP_READY__) return;
+    window.showLoadFail((e && e.message) || 'שגיאה לא ידועה');
+  });
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <!-- Served from this site, not a CDN: a third-party script that fails to load
+       stops the whole page (see above). Byte-identical to the npm packages
+       chart.js@4.4.0 and firebase@10.12.0 (integrity checked 25/11/2026). -->
+  <script src="vendor/chartjs-4.4.0/chart.umd.js"></script>
   <style>
     /* ===== VARIABLES ===== */
     :root {
@@ -861,8 +893,8 @@
   <!-- Tooltip popup element -->
   <div class="tip-popup" id="tipPopup"></div>
   <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+  <script src="vendor/firebase-10.12.0/firebase-app-compat.js"></script>
+  <script src="vendor/firebase-10.12.0/firebase-database-compat.js"></script>
 </head>
 <body>
 
@@ -1177,6 +1209,7 @@
       <div class="setup-icon">📡</div>
       <h2 id="readFailTitle"></h2>
       <p id="readFailBody"></p>
+      <p id="readFailDetail" dir="ltr" style="font-size:0.75em;opacity:0.6;word-break:break-word;margin-top:12px"></p>
     </div>
   </div>
 
@@ -1234,6 +1267,8 @@
 
 <script>
 // ── FIREBASE ──────────────────────────────────────────────────────────────────
+if (typeof firebase === 'undefined') throw new Error('Firebase library did not load');
+if (typeof Chart === 'undefined')    throw new Error('Chart library did not load');
 const firebaseConfig = {
   apiKey:            "AIzaSyDzNyGvg18NgWbxgmInZx6P0mdAl8H82TQ",
   authDomain:        "yuvalinvest-3c538.firebaseapp.com",
@@ -2032,6 +2067,10 @@ db.ref(FB_PATH).on('value', snap => {
 
   if (!fbReady) {
     fbReady = true;
+    window.__APP_READY__ = true;
+    // Data that arrives after the 10s card went up still wins.
+    document.getElementById('readFailOverlay').classList.remove('open');
+    document.getElementById('app').style.display = '';
     // הפעלה ראשונה
     if (!settings) {
       document.getElementById('setupOverlay').classList.add('open');
@@ -2057,6 +2096,12 @@ db.ref(FB_PATH).on('value', snap => {
     'הנתונים לא נמחקו — פשוט לא הצלחנו להגיע אליהם כרגע. נסו שוב עוד רגע, ואם זה חוזר קראו לאבא.';
   document.getElementById('readFailOverlay').classList.add('open');
 });
+
+// No answer at all (offline, a blocked host) fires neither callback above — the
+// listener just waits. Don't let that wait look like an empty account.
+setTimeout(() => {
+  if (!fbReady) window.showLoadFail('No answer from the database after 10 seconds');
+}, 10000);
 
 }  // /if (FB_PATH)
 </script>
