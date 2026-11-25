@@ -20,7 +20,7 @@
 </style>
 </head>
 <body>
-<h1>בדיקת Yuvalinvest · v1</h1>
+<h1>בדיקת Yuvalinvest · v2</h1>
 <noscript><div>JavaScript is OFF in this browser. This is the cause: the app cannot run without it.</div></noscript>
 <div id="out"></div>
 <script>
@@ -80,6 +80,32 @@ check('App page:', 'index.html', function (t) { return t.indexOf('showLoadFail')
 check('Firebase file:', 'vendor/firebase-10.12.0/firebase-database-compat.js');
 check('Chart file:', 'vendor/chartjs-4.4.0/chart.umd.js');
 check('Market data:', 'data/market.json');
+
+// Can this device reach the database server at all, and over which channel?
+// (25/11: on the phone the app ran, but the database never answered.)
+var DB_HOST = 'yuvalinvest-3c538-default-rtdb.europe-west1.firebasedatabase.app';
+(function () {
+  var d = row('info', 'DB server (HTTPS):', 'checking...');
+  var x = new XMLHttpRequest();
+  x.open('GET', 'https://' + DB_HOST + '/.json?shallow=true&t=' + Date.now());
+  x.timeout = 15000;
+  // A refusal (401) is the healthy answer here: root reads are closed by the rules.
+  x.onload = function () { setRow(d, (x.status === 401 || x.status === 200) ? 'ok' : 'bad', 'reachable, HTTP ' + x.status); };
+  x.onerror = function () { setRow(d, 'bad', 'BLOCKED (network error)'); };
+  x.ontimeout = function () { setRow(d, 'bad', 'BLOCKED (no answer in 15s)'); };
+  x.send();
+})();
+(function () {
+  var d = row('info', 'DB server (WebSocket):', 'checking...');
+  var done = false;
+  try {
+    var ws = new WebSocket('wss://' + DB_HOST + '/.ws?v=5&ns=yuvalinvest-3c538-default-rtdb');
+    ws.onmessage = function () { if (done) return; done = true; setRow(d, 'ok', 'connected, server answered'); ws.close(); };
+    ws.onerror = function () { if (done) return; done = true; setRow(d, 'bad', 'BLOCKED (connection error)'); };
+    ws.onclose = function (e) { if (done) return; done = true; setRow(d, 'bad', 'closed before answering (code ' + e.code + ')'); };
+  } catch (e) { done = true; setRow(d, 'bad', 'could not open: ' + e.message); }
+  setTimeout(function () { if (!done) { done = true; setRow(d, 'bad', 'BLOCKED (no answer in 15s)'); } }, 15000);
+})();
 
 // Load Firebase and read each stored child's beat count.
 function loadScript(src, cb) {
