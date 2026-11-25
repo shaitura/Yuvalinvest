@@ -6,8 +6,15 @@
        injected payload slipped past output-escaping, connect-src/img-src block it from
        exfiltrating anything (e.g. a same-origin family-tracker token) to an attacker host.
        Static GitHub Pages can't issue per-request nonces, and the app relies on inline scripts,
-       so script-src keeps 'unsafe-inline'; output-escaping is the primary XSS defense. -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.googleapis.com https://www.gstatic.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
+       so script-src keeps 'unsafe-inline'; output-escaping is the primary XSS defense.
+       script-src/frame-src also allow the database's own hosts (fixed 25/11/2026): when a
+       device's WebSocket fails, the Firebase SDK falls back to long-polling, which loads
+       <script> and <iframe> from *.europe-west1.firebasedatabase.app — and it remembers the
+       failure, so that device starts on long-polling every time after. Blocked here, the
+       app waited forever for data on two Android phones (from 27/09 to 25/11) while every
+       desktop, on WebSocket, worked. No new exfiltration path: connect-src already
+       allows these hosts. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://*.europe-west1.firebasedatabase.app; frame-src https://*.europe-west1.firebasedatabase.app; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://*.firebasedatabase.app wss://*.firebasedatabase.app https://*.googleapis.com https://www.gstatic.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>מסע ההשקעות ✨</title>
   <!-- PWA -->
